@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ubud Insider | Local Recommendations</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="logo">🌴 Ubud Insider</h1>
+                <p class="tagline">Local recommendations for the mindful traveler</p>
+            </div>
+        </header>
+
+        <!-- Search Bar -->
+        <div class="search-section">
+            <div class="search-container">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <input type="text" id="searchInput" class="search-input" placeholder="Search places, food, yoga...">
+                <button id="clearSearch" class="clear-btn" style="display: none;"></button>
+            </div>
+        </div>
+
+        <!-- Category Filter -->
+        <div class="category-section">
+            <div class="category-scroll" id="categoryList">
+                <button class="category-btn active" data-category="all">
+                    <span class="category-icon">🏠</span>
+                    <span class="category-name">All</span>
+                </button>
+                <!-- Categories will be populated by JS -->
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-bar">
+            <span id="statsText">Showing all places</span>
+            <span class="favorites-count" id="favCount" style="display: none;">
+                ⭐ <span id="favCountNum">0</span> saved
+            </span>
+        </div>
+
+        <!-- Places List -->
+        <div class="places-container" id="placesList">
+            <!-- Places will be populated by JS -->
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" id="emptyState" style="display: none;">
+            <div class="empty-icon">🔍</div>
+            <h3>No places found</h3>
+            <p>Try adjusting your search or filters</p>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Made with 💚 for Ubud travelers</p>
+        </footer>
+    </div>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
