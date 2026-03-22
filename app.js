@@ -87,7 +87,7 @@ function setupEventListeners() {
       
       // Hide dropdown if input is empty
       if (value.length < 2) {
-        hideSearchAutocomplete();
+        hideSearchDropdown();
         if (currentView === 'list') {
           renderPlaces();
         } else {
@@ -182,9 +182,51 @@ function setupEventListeners() {
       `;
     }).join('');
     
+    // Position dropdown below search input
+    positionSearchDropdown();
+    
     searchDropdown.style.display = 'block';
     searchSelectedIndex = -1;
   }
+  
+  function positionSearchDropdown() {
+    const searchBox = document.querySelector('.search-box');
+    if (!searchBox) return;
+    
+    const rect = searchBox.getBoundingClientRect();
+    const dropdownTop = rect.bottom + window.scrollY + 8;
+    
+    // On mobile, use full width with margins
+    // On desktop, center align with the container
+    const isMobile = window.innerWidth < 1000;
+    
+    if (isMobile) {
+      searchDropdown.style.left = '20px';
+      searchDropdown.style.right = '20px';
+      searchDropdown.style.width = 'auto';
+      searchDropdown.style.transform = 'none';
+    } else {
+      searchDropdown.style.left = '50%';
+      searchDropdown.style.transform = 'translateX(-50%)';
+      searchDropdown.style.width = '960px';
+      searchDropdown.style.right = 'auto';
+    }
+    
+    searchDropdown.style.top = `${dropdownTop}px`;
+  }
+  
+  // Reposition dropdown on scroll and resize
+  window.addEventListener('scroll', () => {
+    if (searchDropdown.style.display === 'block') {
+      positionSearchDropdown();
+    }
+  }, { passive: true });
+  
+  window.addEventListener('resize', () => {
+    if (searchDropdown.style.display === 'block') {
+      positionSearchDropdown();
+    }
+  });
   
   function renderSearchDropdownSelection() {
     const items = searchDropdown.querySelectorAll('.search-dropdown-item');
