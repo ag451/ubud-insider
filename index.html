@@ -129,32 +129,16 @@
     </div>
 
     <!-- Config and app -->
-    <script src="data.js?v=5"></script>
-    <script src="config.js?v=5"></script>
-    <script src="app.js?v=5"></script>
+    <script src="data.js?v=6"></script>
+    <script src="config.js?v=6"></script>
+    <script src="app.js?v=6"></script>
     
-    <!-- Leaflet JS (fallback map - always loaded) -->
+    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    
-    <!-- Google Maps API - Loaded only if API key is configured -->
     <script>
-      (function() {
-        // Wait for config to load
-        setTimeout(function() {
-          const apiKey = (typeof GOOGLE_PLACES_CONFIG !== 'undefined') ? GOOGLE_PLACES_CONFIG.apiKey : '';
-          if (apiKey && apiKey.length > 10) {
-            console.log('Loading Google Maps...');
-            const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,marker&callback=initGoogleMap`;
-            script.async = true;
-            script.defer = true;
-            document.head.appendChild(script);
-          } else {
-            console.log('No Google Maps API key - using Leaflet fallback');
-            window.useLeaflet = true;
-          }
-        }, 100);
-      })();
+      // Always use Leaflet (free, no API key needed)
+      window.useLeaflet = true;
+      console.log('Using Leaflet map (free, no API key required)');
     </script>
 </body>
 </html>
