@@ -264,6 +264,35 @@ app.post('/api/places/why/batch-generate', async (req, res) => {
   }
 });
 
+// Sync vibes from data.js to database
+app.post('/api/places/sync-vibes', async (req, res) => {
+  try {
+    // Import data.js to get original vibes
+    const dataPath = path.join(__dirname, 'data.js');
+    delete require.cache[require.resolve(dataPath)];
+    const { UBUD_DATA } = require(dataPath);
+    
+    const results = [];
+    
+    for (const place of UBUD_DATA.places) {
+      if (place.vibes && place.vibes.length > 0) {
+        try {
+          // Update place with vibes
+          await upsertPlace(db, place);
+          results.push({ id: place.id, name: place.name, vibes: place.vibes, status: 'updated' });
+        } catch (err) {
+          results.push({ id: place.id, name: place.name, status: 'error', error: err.message });
+        }
+      }
+    }
+    
+    res.json({ message: `Synced vibes for ${results.filter(r => r.status === 'updated').length} places`, results });
+  } catch (err) {
+    console.error('Error syncing vibes:', err);
+    res.status(500).json({ error: 'Failed to sync vibes' });
+  }
+});
+
 // Helper to fetch Google Place details
 async function fetchGooglePlaceDetails(placeId) {
   const fields = ['name', 'formatted_address', 'formatted_phone_number', 'opening_hours', 
