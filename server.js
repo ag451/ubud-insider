@@ -163,8 +163,11 @@ app.get('/api/places/search', async (req, res) => {
     `locationbias=circle:5000@${location || '-8.5069,115.2625'}&` +
     `key=${GOOGLE_PLACES_API_KEY}`;
   
+  console.log('🔍 Places search:', query);
+  
   try {
     const data = await fetchFromGoogle(searchUrl);
+    console.log('📡 Google response:', data.status, data.candidates ? `${data.candidates.length} candidates` : 'no candidates');
     res.json(data);
   } catch (err) {
     console.error('Places search error:', err);
