@@ -282,11 +282,11 @@ body {
     gap: 4px;
 }
 
-/* Places Grid */
+/* Places List */
 .places-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .place-card {
