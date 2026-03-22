@@ -63,6 +63,17 @@ function initDatabase() {
           FOREIGN KEY (place_id) REFERENCES places(id) ON DELETE CASCADE
         )
       `);
+
+      // Why This Place table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS why_this_place (
+          place_id INTEGER PRIMARY KEY,
+          sentence TEXT,
+          tags TEXT,
+          last_generated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (place_id) REFERENCES places(id) ON DELETE CASCADE
+        )
+      `);
     });
 
     resolve(db);
@@ -220,6 +231,72 @@ async function importInitialData(db, placesData) {
   console.log(`✅ Imported ${placesData.length} places`);
 }
 
+// Get Why This Place data
+function getWhyThisPlace(db, placeId) {
+  return new Promise((resolve, reject) => {
+    db.get('SELECT * FROM why_this_place WHERE place_id = ?', [placeId], (err, row) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      if (!row) {
+        resolve(null);
+        return;
+      }
+      resolve({
+        sentence: row.sentence,
+        tags: row.tags ? JSON.parse(row.tags) : [],
+        last_generated_at: row.last_generated_at
+      });
+    });
+  });
+}
+
+// Set Why This Place data
+function setWhyThisPlace(db, placeId, sentence, tags) {
+  return new Promise((resolve, reject) => {
+    db.run(`
+      INSERT INTO why_this_place (place_id, sentence, tags, last_generated_at)
+      VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(place_id) DO UPDATE SET
+        sentence = excluded.sentence,
+        tags = excluded.tags,
+        last_generated_at = CURRENT_TIMESTAMP
+    `, [placeId, sentence, JSON.stringify(tags)], function(err) {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve({ id: placeId });
+    });
+  });
+}
+
+// Get all places with their Why This Place data
+function getAllPlacesWithWhy(db) {
+  return new Promise((resolve, reject) => {
+    db.all(`
+      SELECT p.*, w.sentence as why_sentence, w.tags as why_tags
+      FROM places p
+      LEFT JOIN why_this_place w ON p.id = w.id
+      ORDER BY p.id
+    `, [], (err, rows) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      const places = rows.map(row => ({
+        ...row,
+        why_this_place: row.why_sentence ? {
+          sentence: row.why_sentence,
+          tags: row.why_tags ? JSON.parse(row.why_tags) : []
+        } : null
+      }));
+      resolve(places);
+    });
+  });
+}
+
 module.exports = {
   initDatabase,
   getAllPlaces,
@@ -228,5 +305,8 @@ module.exports = {
   deletePlace,
   addReview,
   addPhoto,
-  importInitialData
+  importInitialData,
+  getWhyThisPlace,
+  setWhyThisPlace,
+  getAllPlacesWithWhy
 };

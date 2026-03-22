@@ -7,6 +7,7 @@ let favorites = JSON.parse(localStorage.getItem('ubud_favorites') || '[]');
 let map = null;
 let markers = [];
 let userLocation = null; // { lat, lng, address }
+let whyThisPlaceCache = {}; // Cache for Why This Place data
 
 const API_BASE = '/api';
 
@@ -522,12 +523,12 @@ function switchViewMobile(view) {
     
     renderMapCategories();
     
-    if (!map) {
+    if (!map || typeof map.getCenter !== 'function') {
       initLeafletMap();
     }
     
     setTimeout(() => {
-      if (window.mapProvider === 'leaflet' && map) {
+      if (map && typeof map.invalidateSize === 'function') {
         map.invalidateSize();
       }
       updateMapMarkers();
@@ -555,12 +556,12 @@ function switchViewDesktop(view) {
     
     renderInlineMapCategories();
     
-    if (!window.inlineMap) {
+    if (!window.inlineMap || typeof window.inlineMap.getCenter !== 'function') {
       initInlineLeafletMap();
     }
     
     setTimeout(() => {
-      if (window.inlineMap) {
+      if (window.inlineMap && typeof window.inlineMap.invalidateSize === 'function') {
         window.inlineMap.invalidateSize();
       }
       updateInlineMapMarkers();
@@ -1097,6 +1098,8 @@ function renderPlaces() {
           </div>
         ` : ''}
         
+        ${renderWhyThisPlace(place.why_this_place)}
+        
         <div class="card-actions">
           ${getCardMapsLink(place)}
           <button class="details-btn" onclick="event.stopPropagation(); openPlaceModal(${place.id})">
@@ -1323,6 +1326,88 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// ========== WHY THIS PLACE ==========
+
+// Fetch Why This Place data for a place
+async function fetchWhyThisPlace(placeId) {
+  // Check cache first
+  if (whyThisPlaceCache[placeId]) {
+    return whyThisPlaceCache[placeId];
+  }
+  
+  try {
+    const response = await fetch(`${API_BASE}/places/${placeId}/why`);
+    if (!response.ok) {
+      // If not found, try to generate it
+      return await generateWhyThisPlace(placeId);
+    }
+    
+    const data = await response.json();
+    whyThisPlaceCache[placeId] = data;
+    return data;
+  } catch (err) {
+    console.error('Error fetching Why This Place:', err);
+    return null;
+  }
+}
+
+// Generate Why This Place for a place
+async function generateWhyThisPlace(placeId) {
+  try {
+    const response = await fetch(`${API_BASE}/places/${placeId}/why/generate`, {
+      method: 'POST'
+    });
+    
+    if (!response.ok) throw new Error('Failed to generate');
+    
+    const data = await response.json();
+    whyThisPlaceCache[placeId] = data;
+    return data;
+  } catch (err) {
+    console.error('Error generating Why This Place:', err);
+    return null;
+  }
+}
+
+// Batch generate Why This Place for all places
+async function batchGenerateWhyThisPlace() {
+  try {
+    console.log('🔄 Starting batch generation of Why This Place...');
+    const response = await fetch(`${API_BASE}/places/why/batch-generate`, {
+      method: 'POST'
+    });
+    
+    if (!response.ok) throw new Error('Failed to batch generate');
+    
+    const data = await response.json();
+    console.log('✅ Batch generation complete:', data);
+    return data;
+  } catch (err) {
+    console.error('Error batch generating:', err);
+    return null;
+  }
+}
+
+// Render Why This Place on card
+function renderWhyThisPlace(whyData) {
+  if (!whyData) return '';
+  
+  const tagsHtml = whyData.tags.map(tag => 
+    `<span class="why-tag">${escapeHtml(tag)}</span>`
+  ).join('');
+  
+  return `
+    <div class="why-this-place">
+      <div class="why-header">
+        <span class="why-icon">✨</span>
+        <span class="why-label">Why this place</span>
+      </div>
+      <p class="why-sentence">${escapeHtml(whyData.sentence)}</p>
+      <div class="why-tags">${tagsHtml}</div>
+    </div>
+  `;
 }
 
 // Sync with Google Places API

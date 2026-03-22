@@ -9,8 +9,12 @@ const {
   deletePlace,
   addReview,
   addPhoto,
-  importInitialData
+  importInitialData,
+  getWhyThisPlace,
+  setWhyThisPlace,
+  getAllPlacesWithWhy
 } = require('./database');
+const { analyzeReviews } = require('./reviewAnalyzer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -131,6 +135,147 @@ app.get('/api/places/photo', async (req, res) => {
   
   res.redirect(photoUrl);
 });
+
+// ========== WHY THIS PLACE API ==========
+
+// Get Why This Place for a specific place
+app.get('/api/places/:id/why', async (req, res) => {
+  try {
+    const placeId = parseInt(req.params.id);
+    const whyData = await getWhyThisPlace(db, placeId);
+    
+    if (!whyData) {
+      return res.status(404).json({ error: 'Why This Place not generated yet' });
+    }
+    
+    res.json(whyData);
+  } catch (err) {
+    console.error('Error getting Why This Place:', err);
+    res.status(500).json({ error: 'Failed to get Why This Place' });
+  }
+});
+
+// Generate Why This Place for a specific place
+app.post('/api/places/:id/why/generate', async (req, res) => {
+  try {
+    const placeId = parseInt(req.params.id);
+    
+    // Get place with reviews
+    const place = await getPlaceById(db, placeId);
+    if (!place) {
+      return res.status(404).json({ error: 'Place not found' });
+    }
+    
+    // Check if we have reviews in the database
+    let reviews = place.reviews || [];
+    
+    // If no reviews in DB but we have a google_place_id, fetch from Google
+    if (reviews.length === 0 && place.google_place_id && GOOGLE_PLACES_API_KEY) {
+      console.log(`🔍 Fetching reviews from Google for place ${placeId}`);
+      const googleData = await fetchGooglePlaceDetails(place.google_place_id);
+      if (googleData.result && googleData.result.reviews) {
+        reviews = googleData.result.reviews;
+        
+        // Save reviews to database
+        for (const review of reviews) {
+          await addReview(db, placeId, {
+            author: review.author_name,
+            rating: review.rating,
+            text: review.text,
+            time: review.time ? new Date(review.time * 1000).toISOString() : null
+          });
+        }
+      }
+    }
+    
+    // Analyze reviews and generate Why This Place
+    const analysis = analyzeReviews(reviews);
+    
+    // Save to database
+    await setWhyThisPlace(db, placeId, analysis.sentence, analysis.tags);
+    
+    res.json(analysis);
+  } catch (err) {
+    console.error('Error generating Why This Place:', err);
+    res.status(500).json({ error: 'Failed to generate Why This Place' });
+  }
+});
+
+// Batch generate Why This Place for all places
+app.post('/api/places/why/batch-generate', async (req, res) => {
+  try {
+    const places = await getAllPlaces(db);
+    const results = [];
+    
+    for (const place of places) {
+      // Skip if already generated recently (within 7 days)
+      const existing = await getWhyThisPlace(db, place.id);
+      if (existing && existing.last_generated_at) {
+        const daysSince = (Date.now() - new Date(existing.last_generated_at).getTime()) / (1000 * 60 * 60 * 24);
+        if (daysSince < 7) {
+          console.log(`⏭️ Skipping ${place.name} - generated ${Math.floor(daysSince)} days ago`);
+          continue;
+        }
+      }
+      
+      try {
+        // Get reviews
+        let reviews = [];
+        const placeWithReviews = await getPlaceById(db, place.id);
+        reviews = placeWithReviews.reviews || [];
+        
+        // If no reviews but has google_place_id, fetch from Google
+        if (reviews.length === 0 && place.google_place_id && GOOGLE_PLACES_API_KEY) {
+          const googleData = await fetchGooglePlaceDetails(place.google_place_id);
+          if (googleData.result && googleData.result.reviews) {
+            reviews = googleData.result.reviews;
+            
+            // Save to database
+            for (const review of reviews) {
+              await addReview(db, place.id, {
+                author: review.author_name,
+                rating: review.rating,
+                text: review.text,
+                time: review.time ? new Date(review.time * 1000).toISOString() : null
+              });
+            }
+          }
+        }
+        
+        // Generate Why This Place
+        const analysis = analyzeReviews(reviews);
+        await setWhyThisPlace(db, place.id, analysis.sentence, analysis.tags);
+        
+        results.push({ placeId: place.id, name: place.name, status: 'generated' });
+        console.log(`✅ Generated for ${place.name}: "${analysis.sentence}"`);
+        
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 200));
+      } catch (err) {
+        console.error(`❌ Error generating for ${place.name}:`, err.message);
+        results.push({ placeId: place.id, name: place.name, status: 'error', error: err.message });
+      }
+    }
+    
+    res.json({ message: `Processed ${results.length} places`, results });
+  } catch (err) {
+    console.error('Error in batch generate:', err);
+    res.status(500).json({ error: 'Failed to batch generate' });
+  }
+});
+
+// Helper to fetch Google Place details
+async function fetchGooglePlaceDetails(placeId) {
+  const fields = ['name', 'formatted_address', 'formatted_phone_number', 'opening_hours', 
+                  'rating', 'reviews', 'photos', 'website', 'url', 'geometry'];
+  
+  const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?` +
+    `place_id=${placeId}&` +
+    `fields=${fields.join(',')}&` +
+    `key=${GOOGLE_PLACES_API_KEY}`;
+  
+  return fetchFromGoogle(detailsUrl);
+}
 
 // ========== DATABASE API ROUTES ==========
 
