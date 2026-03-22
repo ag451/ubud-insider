@@ -1128,13 +1128,11 @@ function renderPlaces() {
   container.innerHTML = filtered.map((place, index) => {
     const category = UBUD_DATA.categories.find(c => c.id === place.category);
     const isFav = favorites.includes(place.id);
-    const hasNotes = place.description && place.description.length > 10;
     
     return `
       <article class="place-card" style="animation-delay: ${index * 0.05}s" onclick="openPlaceModal(${place.id})">
         <div class="place-header">
           <h3 class="place-name">${escapeHtml(place.name)}</h3>
-          ${hasNotes ? `<div class="user-avatar" title="Abrar's notes">A</div>` : ''}
         </div>
         
         <button class="fav-btn ${isFav ? 'active' : ''}" 
@@ -1150,16 +1148,6 @@ function renderPlaces() {
           ${place.rating ? `<span class="place-rating"><span class="star">★</span> ${place.rating}</span>` : ''}
           ${renderVibeTags(place.vibes)}
         </div>
-        
-        ${hasNotes ? `
-          <div class="highlights-box">
-            <div class="highlights-header">
-              <span class="highlights-icon">✨</span>
-              <span class="highlights-label">Notes</span>
-            </div>
-            <p class="highlights-text">${escapeHtml(place.description)}</p>
-          </div>
-        ` : ''}
         
         ${renderWhyThisPlace(place.why_this_place)}
         
@@ -1213,6 +1201,8 @@ function openPlaceModal(placeId) {
       <div class="modal-section-title">About</div>
       <p class="modal-text">${escapeHtml(place.description)}</p>
     </div>
+    
+    ${renderWhyThisPlace(place.why_this_place)}
     
     ${place.distance ? `
       <div class="modal-section">
