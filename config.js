@@ -2,6 +2,10 @@
 // API key should be set as GOOGLE_PLACES_API_KEY environment variable in Railway
 
 const GOOGLE_PLACES_CONFIG = {
+    // Google Maps API Key (for frontend map)
+    // Set this to your actual Google Maps API key
+    apiKey: '',
+    
     // Backend proxy endpoints (no API key needed in browser)
     searchEndpoint: '/api/places/search',
     detailsEndpoint: '/api/places/details',

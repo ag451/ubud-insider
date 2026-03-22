@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderPlaces();
   updateFavCount();
   setupEventListeners();
-  initMap();
+  // Map is initialized by Google Maps callback (initGoogleMap)
 });
 
 // Setup event listeners
@@ -116,9 +116,8 @@ function switchView(view) {
     // Render map categories if needed
     renderMapCategories();
     
-    // Update map
+    // Google Maps handles resize automatically, just update markers
     setTimeout(() => {
-      if (map) map.invalidateSize();
       updateMapMarkers();
     }, 100);
   } else {
@@ -130,24 +129,98 @@ function switchView(view) {
   }
 }
 
-// Initialize map
-function initMap() {
+// Initialize Google Map
+globalThis.initGoogleMap = function() {
   const mapCenter = UBUD_DATA.mapCenter;
   
-  map = L.map('map').setView([mapCenter.lat, mapCenter.lng], 15);
+  const mapElement = document.getElementById('map');
+  if (!mapElement) {
+    console.error('Map element not found');
+    return;
+  }
   
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-    subdomains: 'abcd',
-    maxZoom: 19
-  }).addTo(map);
+  // Dark theme map styles
+  const darkTheme = [
+    { elementType: 'geometry', stylers: [{ color: '#1d1d1d' }] },
+    { elementType: 'labels.text.fill', stylers: [{ color: '#888888' }] },
+    { elementType: 'labels.text.stroke', stylers: [{ color: '#1d1d1d' }] },
+    {
+      featureType: 'administrative.locality',
+      elementType: 'labels.text.fill',
+      stylers: [{ color: '#ffffff' }]
+    },
+    {
+      featureType: 'poi',
+      elementType: 'labels.text.fill',
+      stylers: [{ color: '#888888' }]
+    },
+    {
+      featureType: 'poi.park',
+      elementType: 'geometry',
+      stylers: [{ color: '#0d2818' }]
+    },
+    {
+      featureType: 'poi.park',
+      elementType: 'labels.text.fill',
+      stylers: [{ color: '#22c55e' }]
+    },
+    {
+      featureType: 'road',
+      elementType: 'geometry',
+      stylers: [{ color: '#2a2a2a' }]
+    },
+    {
+      featureType: 'road',
+      elementType: 'labels.text.fill',
+      stylers: [{ color: '#888888' }]
+    },
+    {
+      featureType: 'road.highway',
+      elementType: 'geometry',
+      stylers: [{ color: '#3a3a3a' }]
+    },
+    {
+      featureType: 'road.highway',
+      elementType: 'labels.text.fill',
+      stylers: [{ color: '#aaaaaa' }]
+    },
+    {
+      featureType: 'transit',
+      elementType: 'geometry',
+      stylers: [{ color: '#2a2a2a' }]
+    },
+    {
+      featureType: 'water',
+      elementType: 'geometry',
+      stylers: [{ color: '#0f1729' }]
+    },
+    {
+      featureType: 'water',
+      elementType: 'labels.text.fill',
+      stylers: [{ color: '#4a5568' }]
+    }
+  ];
+  
+  map = new google.maps.Map(mapElement, {
+    center: { lat: mapCenter.lat, lng: mapCenter.lng },
+    zoom: 15,
+    styles: darkTheme,
+    mapTypeControl: false,
+    fullscreenControl: false,
+    streetViewControl: false,
+    zoomControl: true,
+    zoomControlOptions: {
+      position: google.maps.ControlPosition.RIGHT_BOTTOM
+    }
+  });
   
   updateMapMarkers();
-}
+};
 
 // Update map markers
 function updateMapMarkers() {
-  markers.forEach(marker => map.removeLayer(marker));
+  // Clear existing markers
+  markers.forEach(marker => marker.setMap(null));
   markers = [];
   
   const filtered = getFilteredPlaces();
@@ -158,24 +231,69 @@ function updateMapMarkers() {
     const category = UBUD_DATA.categories.find(c => c.id === place.category);
     const icon = category ? category.icon : '📍';
     
-    const marker = L.marker([place.lat, place.lng])
-      .addTo(map)
-      .bindPopup(`
-        <div style="font-family: Inter, sans-serif; min-width: 200px;">
+    // Create marker
+    const marker = new google.maps.Marker({
+      position: { lat: place.lat, lng: place.lng },
+      map: map,
+      title: place.name,
+      icon: {
+        url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+          `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+            <circle cx="20" cy="20" r="18" fill="#22c55e" stroke="#0a0a0a" stroke-width="2"/>
+            <text x="20" y="25" font-size="18" text-anchor="middle" fill="#000">${icon}</text>
+          </svg>`
+        )}`,
+        scaledSize: new google.maps.Size(40, 40),
+        anchor: new google.maps.Point(20, 20)
+      }
+    });
+    
+    // Create info window
+    const infoWindow = new google.maps.InfoWindow({
+      content: `
+        <div style="font-family: Inter, sans-serif; min-width: 200px; padding: 8px;">
           <div style="font-weight: 600; font-size: 1rem; margin-bottom: 4px;">${icon} ${escapeHtml(place.name)}</div>
-          <div style="color: #888; font-size: 0.85rem; margin-bottom: 8px;">${escapeHtml(place.description.substring(0, 60))}...</div>
-          <button onclick="openPlaceModal(${place.id})" style="background: #22c55e; color: #000; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">View Details</button>
+          <div style="color: #666; font-size: 0.85rem; margin-bottom: 8px;">${escapeHtml(place.description.substring(0, 60))}...</div>
+          <button onclick="window.openPlaceModal(${place.id}); window.closeInfoWindow();" 
+            style="background: #22c55e; color: #000; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">
+            View Details
+          </button>
         </div>
-      `);
+      `
+    });
+    
+    marker.addListener('click', () => {
+      // Close any open info windows
+      if (window.currentInfoWindow) {
+        window.currentInfoWindow.close();
+      }
+      window.currentInfoWindow = infoWindow;
+      infoWindow.open(map, marker);
+    });
     
     markers.push(marker);
   });
   
-  if (markers.length > 0) {
-    const group = new L.featureGroup(markers);
-    map.fitBounds(group.getBounds().pad(0.1));
+  // Fit bounds if we have markers
+  if (markers.length > 0 && map) {
+    const bounds = new google.maps.LatLngBounds();
+    markers.forEach(marker => bounds.extend(marker.getPosition()));
+    map.fitBounds(bounds);
+    
+    // Don't zoom in too far
+    const listener = google.maps.event.addListener(map, 'idle', () => {
+      if (map.getZoom() > 17) map.setZoom(17);
+      google.maps.event.removeListener(listener);
+    });
   }
 }
+
+// Close info window helper
+globalThis.closeInfoWindow = function() {
+  if (window.currentInfoWindow) {
+    window.currentInfoWindow.close();
+  }
+};
 
 // Render category buttons
 function renderCategories() {

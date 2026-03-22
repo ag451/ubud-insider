@@ -7,11 +7,9 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Ubud Insider | Local Recommendations</title>
-    <link rel="stylesheet" href="styles.css?v=3">
+    <link rel="stylesheet" href="styles.css?v=4">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 </head>
 <body>
     <div class="app" id="appContainer">
@@ -128,11 +126,25 @@
         </div>
     </div>
 
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Config must be loaded before Google Maps -->
+    <script src="data.js?v=4"></script>
+    <script src="config.js?v=4"></script>
+    <script src="app.js?v=4"></script>
     
-    <script src="data.js?v=3"></script>
-    <script src="config.js?v=3"></script>
-    <script src="app.js?v=3"></script>
+    <!-- Google Maps API - Loaded after config -->
+    <script>
+      (function() {
+        const apiKey = typeof GOOGLE_PLACES_CONFIG !== 'undefined' ? GOOGLE_PLACES_CONFIG.apiKey : '';
+        if (!apiKey) {
+          console.warn('Google Maps API key not configured');
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,marker&callback=initGoogleMap`;
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+      })();
+    </script>
 </body>
 </html>
