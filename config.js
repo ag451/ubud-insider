@@ -3,7 +3,7 @@
 
 const GOOGLE_PLACES_CONFIG = {
     // 🔑 Add your Google Places API key here
-    apiKey: '', // Replace with: 'AIzaSyBxn_Zy0Dx06qf0ZYGEaoDSBXHQZaarKIE'
+    apiKey: 'AIzaSyBxn_Zy0Dx06qf0ZYGEaoDSBXHQZaarKIE',
     
     // API configuration
     baseUrl: 'https://maps.googleapis.com/maps/api/place',
