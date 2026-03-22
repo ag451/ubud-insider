@@ -64,24 +64,165 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Setup event listeners
 function setupEventListeners() {
-  // Search input
+  // Search input with autocomplete
   const searchInput = document.getElementById('searchInput');
   const clearBtn = document.getElementById('clearSearch');
+  const searchAutocomplete = document.getElementById('searchAutocomplete');
+  let searchAutocompleteTimeout = null;
+  let searchSelectedIndex = -1;
+  let searchResults = [];
   
-  searchInput.addEventListener('input', (e) => {
-    searchTerm = e.target.value.toLowerCase();
-    clearBtn.style.display = searchTerm ? 'flex' : 'none';
+  if (searchInput) {
+    // Input event for search with autocomplete
+    searchInput.addEventListener('input', (e) => {
+      const value = e.target.value.trim();
+      searchTerm = value.toLowerCase();
+      clearBtn.style.display = searchTerm ? 'flex' : 'none';
+      
+      // Clear previous timeout
+      if (searchAutocompleteTimeout) {
+        clearTimeout(searchAutocompleteTimeout);
+      }
+      
+      // Hide dropdown if input is empty
+      if (value.length < 2) {
+        hideSearchAutocomplete();
+        if (currentView === 'list') {
+          renderPlaces();
+        } else {
+          updateMapMarkers();
+        }
+        return;
+      }
+      
+      // Debounce and show autocomplete
+      searchAutocompleteTimeout = setTimeout(() => {
+        searchResults = getSearchAutocompleteResults(value);
+        renderSearchAutocomplete(searchResults);
+      }, 150);
+      
+      if (currentView === 'list') {
+        renderPlaces();
+      } else {
+        updateMapMarkers();
+      }
+    });
+    
+    // Keyboard navigation for search autocomplete
+    searchInput.addEventListener('keydown', (e) => {
+      if (searchResults.length === 0) return;
+      
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          searchSelectedIndex = Math.min(searchSelectedIndex + 1, searchResults.length - 1);
+          renderSearchAutocompleteSelection();
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          searchSelectedIndex = Math.max(searchSelectedIndex - 1, -1);
+          renderSearchAutocompleteSelection();
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (searchSelectedIndex >= 0) {
+            selectSearchResult(searchResults[searchSelectedIndex]);
+          } else {
+            hideSearchAutocomplete();
+          }
+          break;
+        case 'Escape':
+          hideSearchAutocomplete();
+          break;
+      }
+    });
+    
+    // Hide dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.search-section')) {
+        hideSearchAutocomplete();
+      }
+    });
+  }
+  
+  // Search autocomplete helper functions
+  function getSearchAutocompleteResults(query) {
+    const lowerQuery = query.toLowerCase();
+    return UBUD_DATA.places
+      .filter(place => 
+        place.name.toLowerCase().includes(lowerQuery) ||
+        place.description.toLowerCase().includes(lowerQuery) ||
+        (place.area && place.area.toLowerCase().includes(lowerQuery))
+      )
+      .slice(0, 5); // Max 5 results
+  }
+  
+  function renderSearchAutocomplete(results) {
+    if (results.length === 0) {
+      hideSearchAutocomplete();
+      return;
+    }
+    
+    const categoryMap = {};
+    UBUD_DATA.categories.forEach(cat => categoryMap[cat.id] = cat);
+    
+    searchAutocomplete.innerHTML = results.map((place, index) => {
+      const category = categoryMap[place.category];
+      const vibe = place.vibes && place.vibes[0] ? UBUD_DATA.vibes.find(v => v.id === place.vibes[0]) : null;
+      
+      return `
+        <div class="search-autocomplete-item" data-index="${index}" onclick="selectSearchResultByIndex(${index})">
+          <span class="search-autocomplete-icon">${category?.icon || '📍'}</span>
+          <div style="flex: 1; min-width: 0;">
+            <div class="search-autocomplete-text">${escapeHtml(place.name)}</div>
+            <div class="search-autocomplete-category">${category?.name || ''} ${vibe ? '• ' + vibe.name : ''}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+    searchAutocomplete.style.display = 'block';
+    searchSelectedIndex = -1;
+  }
+  
+  function renderSearchAutocompleteSelection() {
+    const items = searchAutocomplete.querySelectorAll('.search-autocomplete-item');
+    items.forEach((item, index) => {
+      item.classList.toggle('selected', index === searchSelectedIndex);
+    });
+  }
+  
+  globalThis.selectSearchResultByIndex = function(index) {
+    selectSearchResult(searchResults[index]);
+  };
+  
+  function selectSearchResult(place) {
+    searchInput.value = place.name;
+    searchTerm = place.name.toLowerCase();
+    hideSearchAutocomplete();
+    clearBtn.style.display = 'flex';
+    
     if (currentView === 'list') {
       renderPlaces();
     } else {
       updateMapMarkers();
     }
-  });
+    
+    // Open the place modal
+    openPlaceModal(place.id);
+  }
+  
+  function hideSearchAutocomplete() {
+    searchAutocomplete.style.display = 'none';
+    searchResults = [];
+    searchSelectedIndex = -1;
+  }
   
   clearBtn.addEventListener('click', () => {
     searchInput.value = '';
     searchTerm = '';
     clearBtn.style.display = 'none';
+    hideSearchAutocomplete();
     if (currentView === 'list') {
       renderPlaces();
     } else {
