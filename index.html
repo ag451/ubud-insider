@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Ubud Insider | Local Recommendations</title>
-    <link rel="stylesheet" href="styles.css?v=12">
+    <link rel="stylesheet" href="styles.css?v=13">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Leaflet CSS (fallback map) -->
@@ -76,13 +76,21 @@
         </div>
 
         <!-- Category Filter -->
-        <div class="category-section">
+        <div class="category-section" id="categorySection">
             <div class="category-scroll" id="categoryList">
                 <button class="category-btn active" data-category="all">
                     <span class="category-icon">🏠</span>
                     <span class="category-name">All</span>
                 </button>
                 <!-- Categories will be populated by JS -->
+            </div>
+        </div>
+
+        <!-- Vibe Filters -->
+        <div class="vibe-section" id="vibeSection">
+            <div class="vibe-label">I want to feel...</div>
+            <div class="vibe-scroll" id="vibeList">
+                <!-- Vibes will be populated by JS -->
             </div>
         </div>
 

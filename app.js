@@ -1,5 +1,6 @@
 // Ubud Insider App
 let currentCategory = 'all';
+let selectedVibes = []; // Multi-select vibe filters
 let searchTerm = '';
 let currentView = 'list';
 let favorites = JSON.parse(localStorage.getItem('ubud_favorites') || '[]');
@@ -54,6 +55,7 @@ async function importInitialData() {
 document.addEventListener('DOMContentLoaded', async () => {
   await loadPlacesFromDB();
   renderCategories();
+  renderVibes();
   renderPlaces();
   updateFavCount();
   setupEventListeners();
@@ -752,6 +754,47 @@ function renderCategories() {
   });
 }
 
+// Render vibe filter buttons
+function renderVibes() {
+  const container = document.getElementById('vibeList');
+  if (!container) return;
+  
+  UBUD_DATA.vibes.forEach(vibe => {
+    const btn = document.createElement('button');
+    btn.className = 'vibe-btn';
+    btn.dataset.vibe = vibe.id;
+    btn.innerHTML = `
+      <span class="vibe-icon">${vibe.icon}</span>
+      <span class="vibe-name">${vibe.name}</span>
+    `;
+    btn.addEventListener('click', () => toggleVibe(vibe.id));
+    container.appendChild(btn);
+  });
+}
+
+// Toggle vibe selection (multi-select)
+function toggleVibe(vibeId) {
+  const index = selectedVibes.indexOf(vibeId);
+  
+  if (index > -1) {
+    selectedVibes.splice(index, 1);
+  } else {
+    selectedVibes.push(vibeId);
+  }
+  
+  // Update UI
+  document.querySelectorAll('.vibe-btn').forEach(btn => {
+    btn.classList.toggle('active', selectedVibes.includes(btn.dataset.vibe));
+  });
+  
+  // Re-render places
+  if (currentView === 'list') {
+    renderPlaces();
+  } else {
+    updateMapMarkers();
+  }
+}
+
 // Select category
 function selectCategory(category) {
   currentCategory = category;
@@ -799,10 +842,19 @@ function renderMapCategories() {
 // Get filtered places
 function getFilteredPlaces() {
   let places = UBUD_DATA.places.filter(place => {
+    // Category filter
     if (currentCategory !== 'all' && place.category !== currentCategory) {
       return false;
     }
     
+    // Vibe filter (OR logic - match any selected vibe)
+    if (selectedVibes.length > 0) {
+      const placeVibes = place.vibes || [];
+      const hasMatchingVibe = selectedVibes.some(vibe => placeVibes.includes(vibe));
+      if (!hasMatchingVibe) return false;
+    }
+    
+    // Search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       const matchesSearch = 
@@ -889,6 +941,7 @@ function renderPlaces() {
           ${place.area ? `<span class="area-tag">📍 ${escapeHtml(place.area)}</span>` : ''}
           ${place.distance ? `<span class="distance-tag">${place.distance.toFixed(1)} km</span>` : ''}
           ${place.rating ? `<span class="place-rating"><span class="star">★</span> ${place.rating}</span>` : ''}
+          ${renderVibeTags(place.vibes)}
         </div>
         
         ${hasNotes ? `
@@ -909,6 +962,20 @@ function renderPlaces() {
         </div>
       </article>
     `;
+  }).join('');
+}
+
+// Helper function to render 1-2 vibe tags on cards
+function renderVibeTags(vibes) {
+  if (!vibes || vibes.length === 0) return '';
+  
+  // Show max 2 vibes
+  const vibesToShow = vibes.slice(0, 2);
+  
+  return vibesToShow.map(vibeId => {
+    const vibe = UBUD_DATA.vibes.find(v => v.id === vibeId);
+    if (!vibe) return '';
+    return `<span class="vibe-tag">${vibe.icon} ${vibe.name}</span>`;
   }).join('');
 }
 
