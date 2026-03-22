@@ -63,16 +63,41 @@ function switchView(view) {
     });
     
     // Show/hide containers
-    document.getElementById('placesList').style.display = view === 'list' ? 'flex' : 'none';
-    document.getElementById('mapContainer').style.display = view === 'map' ? 'block' : 'none';
+    const mapContainer = document.getElementById('mapContainer');
+    const placesList = document.getElementById('placesList');
+    const searchSection = document.querySelector('.search-section');
+    const categorySection = document.querySelector('.category-section');
+    const statsBar = document.querySelector('.stats-bar');
     
-    if (view === 'list') {
-        renderPlaces();
-    } else {
+    if (view === 'map') {
+        // Hide list elements
+        placesList.style.display = 'none';
+        searchSection.style.display = 'none';
+        categorySection.style.display = 'none';
+        statsBar.style.display = 'none';
+        
+        // Show map
+        mapContainer.classList.add('active');
+        
+        // Render map categories
+        renderMapCategories();
+        
+        // Update map
         setTimeout(() => {
             if (map) map.invalidateSize();
             updateMapMarkers();
         }, 100);
+    } else {
+        // Show list elements
+        placesList.style.display = 'flex';
+        searchSection.style.display = 'block';
+        categorySection.style.display = 'block';
+        statsBar.style.display = 'flex';
+        
+        // Hide map
+        mapContainer.classList.remove('active');
+        
+        renderPlaces();
     }
 }
 
@@ -147,8 +172,13 @@ function renderCategories() {
 function selectCategory(category) {
     currentCategory = category;
     
-    // Update button states
+    // Update button states in list view
     document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.category === category);
+    });
+    
+    // Update button states in map view if exists
+    document.querySelectorAll('.map-category-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.category === category);
     });
     
@@ -156,6 +186,33 @@ function selectCategory(category) {
         renderPlaces();
     } else {
         updateMapMarkers();
+    }
+}
+
+// Render map category buttons
+function renderMapCategories() {
+    const container = document.getElementById('mapCategoryList');
+    if (!container || container.children.length > 1) return; // Already rendered
+    
+    // Clear existing except "All"
+    container.innerHTML = '<button class="map-category-btn active" data-category="all" onclick="selectCategory(\'all\')">All</button>';
+    
+    UBUD_DATA.categories.forEach(cat => {
+        const btn = document.createElement('button');
+        btn.className = 'map-category-btn';
+        btn.dataset.category = cat.id;
+        btn.textContent = `${cat.icon} ${cat.name}`;
+        btn.onclick = () => selectCategory(cat.id);
+        container.appendChild(btn);
+    });
+    
+    // Setup map search
+    const mapSearchInput = document.getElementById('mapSearchInput');
+    if (mapSearchInput) {
+        mapSearchInput.addEventListener('input', (e) => {
+            searchTerm = e.target.value.toLowerCase();
+            updateMapMarkers();
+        });
     }
 }
 
@@ -222,6 +279,7 @@ function renderPlaces() {
                 <div class="place-meta">
                     <span class="category-tag">${category?.icon || ''} ${category?.name || place.category}</span>
                     ${place.area ? `<span class="area-tag">📍 ${escapeHtml(place.area)}</span>` : ''}
+                    ${place.rating ? `<span class="place-rating"><span class="star">★</span> ${place.rating}</span>` : ''}
                 </div>
                 
                 <p class="place-description">${escapeHtml(place.description)}</p>

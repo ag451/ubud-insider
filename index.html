@@ -83,14 +83,21 @@
         </div>
 
         <!-- Map View -->
-        <div class="map-container" id="mapContainer" style="display: none;">
-            <div id="map"></div>
-            <div class="map-legend">
-                <span class="legend-item">🍳 Breakfast</span>
-                <span class="legend-item">🍽️ Dinner</span>
-                <span class="legend-item">🧘 Yoga</span>
-                <span class="legend-item">💆 Spa</span>
+        <div class="map-container" id="mapContainer">
+            <button class="map-close-btn" onclick="switchView('list')">✕</button>
+            <div class="map-controls">
+                <div class="map-category-scroll" id="mapCategoryList">
+                    <button class="map-category-btn active" data-category="all">All</button>
+                </div>
+                <div class="search-container" style="max-width: 400px;">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <input type="text" id="mapSearchInput" class="search-input" placeholder="Search on map...">
+                </div>
             </div>
+            <div id="map"></div>
         </div>
 
         <!-- Empty State -->
