@@ -646,7 +646,15 @@ function renderPlaces() {
           ${place.rating ? `<span class="place-rating"><span class="star">★</span> ${place.rating}</span>` : ''}
         </div>
         
-        <p class="place-description">${escapeHtml(place.description)}</p>
+        ${hasNotes ? `
+          <div class="highlights-box">
+            <div class="highlights-header">
+              <span class="highlights-icon">✨</span>
+              <span class="highlights-label">Notes</span>
+            </div>
+            <p class="highlights-text">${escapeHtml(place.description)}</p>
+          </div>
+        ` : ''}
         
         <div class="card-actions">
           ${getCardMapsLink(place)}

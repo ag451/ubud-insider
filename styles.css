@@ -1015,3 +1015,44 @@ body {
     content: '📍';
     font-size: 0.75rem;
 }
+
+/* Highlights Box for Notes */
+.highlights-box {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(16, 185, 129, 0.03) 100%);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    margin: 12px 0;
+    position: relative;
+}
+
+.highlights-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.highlights-icon {
+    font-size: 0.875rem;
+}
+
+.highlights-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent-light);
+}
+
+.highlights-text {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* Remove old place-description styles since we're using highlights-box now */
+.place-description {
+    display: none;
+}
