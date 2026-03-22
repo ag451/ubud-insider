@@ -1354,3 +1354,57 @@ body {
     color: var(--text-muted);
     margin-top: 2px;
 }
+
+/* Why This Place Section */
+.why-this-place {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(16, 185, 129, 0.03) 100%);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    margin: 12px 0;
+}
+
+.why-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.why-icon {
+    font-size: 1rem;
+}
+
+.why-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent-light);
+}
+
+.why-sentence {
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--text-primary);
+    margin: 0 0 10px 0;
+    font-weight: 500;
+}
+
+.why-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.why-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--accent-light);
+}
