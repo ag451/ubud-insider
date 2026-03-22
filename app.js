@@ -8,8 +8,28 @@ let markers = [];
 
 const API_BASE = '';
 
+// Load saved places from localStorage (if user has made modifications)
+function loadSavedPlaces() {
+    const savedPlaces = localStorage.getItem('ubud_places_data');
+    if (savedPlaces) {
+        try {
+            const parsed = JSON.parse(savedPlaces);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                // Replace the places array with saved data
+                UBUD_DATA.places = parsed;
+                console.log(`✅ Loaded ${parsed.length} saved places from localStorage`);
+                return true;
+            }
+        } catch (e) {
+            console.error('Error loading saved places:', e);
+        }
+    }
+    return false;
+}
+
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
+    loadSavedPlaces();
     renderCategories();
     renderPlaces();
     updateFavCount();

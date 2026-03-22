@@ -465,8 +465,8 @@
                 phone: selectedPlace?.formatted_phone_number
             });
             
-            // Save to localStorage (temporary until backend persistence)
-            localStorage.setItem('ubud_places_custom', JSON.stringify(UBUD_DATA.places.filter(p => p.id > 76)));
+            // Save ALL places to localStorage
+            localStorage.setItem('ubud_places_data', JSON.stringify(UBUD_DATA.places));
             
             showAlert('addAlert', `✅ "${name}" added successfully!`, 'success');
             
@@ -567,8 +567,8 @@
             place.area = document.getElementById(`edit-area-${id}`).value;
             place.description = document.getElementById(`edit-desc-${id}`).value;
             
-            // Save custom places
-            localStorage.setItem('ubud_places_custom', JSON.stringify(UBUD_DATA.places.filter(p => p.id > 76)));
+            // Save ALL places to localStorage
+            localStorage.setItem('ubud_places_data', JSON.stringify(UBUD_DATA.places));
             
             editingPlaceId = null;
             renderPlacesList(document.getElementById('editSearch').value);
@@ -581,7 +581,7 @@
             const index = UBUD_DATA.places.findIndex(p => p.id === id);
             if (index > -1) {
                 UBUD_DATA.places.splice(index, 1);
-                localStorage.setItem('ubud_places_custom', JSON.stringify(UBUD_DATA.places.filter(p => p.id > 76)));
+                localStorage.setItem('ubud_places_data', JSON.stringify(UBUD_DATA.places));
                 renderPlacesList(document.getElementById('editSearch').value);
                 showAlert('editAlert', '✅ Place deleted successfully!', 'success');
             }
@@ -599,16 +599,37 @@
             return div.innerHTML;
         }
         
-        // Load custom places from localStorage on page load
-        const customPlaces = localStorage.getItem('ubud_places_custom');
-        if (customPlaces) {
-            const parsed = JSON.parse(customPlaces);
-            // Merge with existing, avoiding duplicates
-            parsed.forEach(p => {
-                if (!UBUD_DATA.places.find(existing => existing.id === p.id)) {
-                    UBUD_DATA.places.push(p);
+        // Load places from localStorage on page load (overrides data.js)
+        const savedPlaces = localStorage.getItem('ubud_places_data');
+        if (savedPlaces) {
+            try {
+                const parsed = JSON.parse(savedPlaces);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    UBUD_DATA.places = parsed;
+                    console.log(`✅ Loaded ${parsed.length} places from localStorage`);
                 }
-            });
+            } catch (e) {
+                console.error('Error loading saved places:', e);
+            }
+        }
+        // Also check for legacy custom places and migrate
+        const customPlaces = localStorage.getItem('ubud_places_custom');
+        if (customPlaces && !savedPlaces) {
+            try {
+                const parsed = JSON.parse(customPlaces);
+                if (Array.isArray(parsed)) {
+                    parsed.forEach(p => {
+                        if (!UBUD_DATA.places.find(existing => existing.id === p.id)) {
+                            UBUD_DATA.places.push(p);
+                        }
+                    });
+                    // Migrate to new format
+                    localStorage.setItem('ubud_places_data', JSON.stringify(UBUD_DATA.places));
+                    localStorage.removeItem('ubud_places_custom');
+                }
+            } catch (e) {
+                console.error('Error migrating custom places:', e);
+            }
         }
     </script>
 </body>
