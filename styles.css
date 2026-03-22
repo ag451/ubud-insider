@@ -930,6 +930,14 @@ body {
     animation: heartbeat 2s ease-in-out infinite;
 }
 
+.footer .version {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    margin-top: 8px;
+    font-family: monospace;
+    opacity: 0.7;
+}
+
 @keyframes heartbeat {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.1); }
