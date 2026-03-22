@@ -44,15 +44,19 @@ body {
 }
 
 .app {
-    max-width: 600px;
+    max-width: 900px;
     margin: 0 auto;
     padding: 0 16px 32px;
 }
 
 /* Header */
 .header {
-    padding: 32px 0 24px;
+    padding: 24px 0 16px;
     text-align: center;
+}
+
+.header-content {
+    margin-bottom: 16px;
 }
 
 .logo {
@@ -70,9 +74,42 @@ body {
     font-size: 0.9rem;
 }
 
+/* View Toggle */
+.view-toggle {
+    display: inline-flex;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-xl);
+    padding: 4px;
+    border: 1px solid var(--border);
+}
+
+.view-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-lg);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.view-btn:hover {
+    color: var(--text-primary);
+}
+
+.view-btn.active {
+    background: var(--accent);
+    color: #000;
+}
+
 /* Search */
 .search-section {
-    padding: 0 0 20px;
+    padding: 0 0 16px;
 }
 
 .search-container {
@@ -92,7 +129,7 @@ body {
 
 .search-input {
     width: 100%;
-    padding: 14px 16px 14px 48px;
+    padding: 14px 44px 14px 48px;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     border-radius: var(--radius-xl);
@@ -123,28 +160,28 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
 }
 
-.clear-btn::before {
-    content: '×';
-    color: var(--text-secondary);
-    font-size: 1.2rem;
-    line-height: 1;
+.clear-btn:hover {
+    background: var(--border-light);
+    color: var(--text-primary);
 }
 
 /* Categories */
 .category-section {
-    padding: 0 0 16px;
+    padding: 0 0 12px;
     position: sticky;
     top: 0;
     background: var(--bg-primary);
-    z-index: 10;
+    z-index: 100;
     padding-top: 8px;
 }
 
 .category-scroll {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     overflow-x: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -158,13 +195,13 @@ body {
 .category-btn {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
+    gap: 6px;
+    padding: 8px 14px;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     border-radius: var(--radius-xl);
     color: var(--text-secondary);
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -192,8 +229,8 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 4px 16px;
-    font-size: 0.85rem;
+    padding: 4px 4px 12px;
+    font-size: 0.8rem;
     color: var(--text-tertiary);
 }
 
@@ -206,16 +243,17 @@ body {
 .places-container {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
 }
 
 .place-card {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
-    padding: 16px;
+    padding: 14px;
     transition: all 0.2s ease;
     position: relative;
+    cursor: pointer;
 }
 
 .place-card:hover {
@@ -228,11 +266,11 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 .place-name {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--text-primary);
     flex: 1;
@@ -241,10 +279,10 @@ body {
 
 .fav-btn {
     position: absolute;
-    top: 16px;
-    right: 16px;
-    width: 36px;
-    height: 36px;
+    top: 14px;
+    right: 14px;
+    width: 32px;
+    height: 32px;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     border-radius: 50%;
@@ -253,11 +291,11 @@ body {
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
-    font-size: 1.1rem;
+    font-size: 1rem;
+    z-index: 10;
 }
 
 .fav-btn:hover {
-    background: var(--bg-tertiary);
     transform: scale(1.1);
 }
 
@@ -266,15 +304,10 @@ body {
     border-color: var(--favorite);
 }
 
-.fav-btn.active:hover {
-    background: var(--favorite-hover);
-    border-color: var(--favorite-hover);
-}
-
 .place-meta {
     display: flex;
-    gap: 8px;
-    margin-bottom: 8px;
+    gap: 6px;
+    margin-bottom: 6px;
     flex-wrap: wrap;
 }
 
@@ -282,10 +315,10 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    padding: 4px 10px;
+    padding: 3px 8px;
     background: var(--bg-secondary);
     border-radius: var(--radius-sm);
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -294,44 +327,219 @@ body {
 .area-tag {
     display: inline-flex;
     align-items: center;
-    padding: 4px 10px;
+    padding: 3px 8px;
     background: rgba(34, 197, 94, 0.1);
     border-radius: var(--radius-sm);
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: var(--accent-light);
 }
 
 .place-description {
     color: var(--text-secondary);
-    font-size: 0.9rem;
-    line-height: 1.5;
-    margin-bottom: 12px;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    margin-bottom: 10px;
 }
 
-.maps-link {
+.card-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.maps-link, .details-btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 14px;
+    gap: 4px;
+    padding: 6px 12px;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    color: var(--accent-light);
-    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
     font-weight: 500;
     text-decoration: none;
     transition: all 0.2s ease;
+    cursor: pointer;
 }
 
-.maps-link:hover {
+.maps-link:hover, .details-btn:hover {
     background: var(--accent);
     border-color: var(--accent);
     color: #000;
 }
 
-.maps-link svg {
-    width: 16px;
-    height: 16px;
+/* Map Container */
+.map-container {
+    position: relative;
+    height: 500px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+    background: var(--bg-secondary);
+}
+
+.map-legend {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    background: rgba(10, 10, 10, 0.9);
+    padding: 8px;
+    border-radius: var(--radius-lg);
+    backdrop-filter: blur(10px);
+}
+
+.legend-item {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    padding: 2px 6px;
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    position: relative;
+    background: var(--bg-card);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    width: 100%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+    }
+    to {
+        transform: translateY(0);
+    }
+}
+
+.modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close:hover {
+    background: var(--border);
+    color: var(--text-primary);
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.modal-header {
+    margin-bottom: 16px;
+}
+
+.modal-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    padding-right: 40px;
+}
+
+.modal-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.modal-section {
+    margin-bottom: 20px;
+}
+
+.modal-section-title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary);
+    margin-bottom: 8px;
+}
+
+.modal-text {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.rating-stars {
+    color: var(--favorite);
+    font-size: 1.2rem;
+}
+
+.review-item {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    margin-bottom: 10px;
+}
+
+.review-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.review-author {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.review-rating {
+    color: var(--favorite);
+}
+
+.review-text {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    line-height: 1.4;
 }
 
 /* Empty State */
@@ -363,30 +571,38 @@ body {
 }
 
 /* Responsive */
-@media (max-width: 480px) {
+@media (max-width: 600px) {
     .app {
         padding: 0 12px 24px;
     }
     
     .header {
-        padding: 24px 0 16px;
+        padding: 20px 0 12px;
     }
     
     .logo {
         font-size: 1.5rem;
     }
     
-    .category-btn {
-        padding: 8px 12px;
+    .view-btn {
+        padding: 6px 12px;
         font-size: 0.8rem;
     }
     
-    .place-card {
-        padding: 14px;
+    .map-container {
+        height: 400px;
     }
     
-    .place-name {
-        font-size: 1rem;
+    .modal-content {
+        max-height: 85vh;
+    }
+    
+    .modal-body {
+        padding: 20px;
+    }
+    
+    .modal-title {
+        font-size: 1.25rem;
     }
 }
 
@@ -406,7 +622,7 @@ body {
     animation: fadeIn 0.3s ease forwards;
 }
 
-/* Scrollbar styling for webkit */
+/* Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -423,4 +639,24 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
     background: var(--border-light);
+}
+
+/* Leaflet Map Customization */
+.leaflet-popup-content-wrapper {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}
+
+.leaflet-popup-tip {
+    background: var(--bg-card);
+}
+
+.leaflet-container a {
+    color: var(--accent-light);
+}
+
+.leaflet-container a:hover {
+    color: var(--accent);
 }

@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 </head>
 <body>
     <div class="app">
@@ -15,6 +17,25 @@
             <div class="header-content">
                 <h1 class="logo">🌴 Ubud Insider</h1>
                 <p class="tagline">Local recommendations for the mindful traveler</p>
+            </div>
+            <!-- View Toggle -->
+            <div class="view-toggle">
+                <button class="view-btn active" data-view="list">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                    List
+                </button>
+                <button class="view-btn" data-view="map">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="1 6 1 22 8 18 16 22 21 18 21 2 16 6 8 2 1 6"></polygon>
+                        <line x1="8" y1="2" x2="8" y2="18"></line>
+                        <line x1="16" y1="6" x2="16" y2="22"></line>
+                    </svg>
+                    Map
+                </button>
             </div>
         </header>
 
@@ -26,7 +47,7 @@
                     <path d="m21 21-4.35-4.35"></path>
                 </svg>
                 <input type="text" id="searchInput" class="search-input" placeholder="Search places, food, yoga...">
-                <button id="clearSearch" class="clear-btn" style="display: none;"></button>
+                <button id="clearSearch" class="clear-btn" style="display: none;">✕</button>
             </div>
         </div>
 
@@ -49,9 +70,20 @@
             </span>
         </div>
 
-        <!-- Places List -->
+        <!-- List View -->
         <div class="places-container" id="placesList">
             <!-- Places will be populated by JS -->
+        </div>
+
+        <!-- Map View -->
+        <div class="map-container" id="mapContainer" style="display: none;">
+            <div id="map"></div>
+            <div class="map-legend">
+                <span class="legend-item">🍳 Breakfast</span>
+                <span class="legend-item">🍽️ Dinner</span>
+                <span class="legend-item">🧘 Yoga</span>
+                <span class="legend-item">💆 Spa</span>
+            </div>
         </div>
 
         <!-- Empty State -->
@@ -61,13 +93,29 @@
             <p>Try adjusting your search or filters</p>
         </div>
 
+        <!-- Place Detail Modal -->
+        <div class="modal" id="placeModal" style="display: none;">
+            <div class="modal-backdrop" onclick="closeModal()"></div>
+            <div class="modal-content">
+                <button class="modal-close" onclick="closeModal()">✕</button>
+                
+                <div class="modal-body" id="modalBody">
+                    <!-- Place details will be populated here -->
+                </div>
+            </div>
+        </div>
+
         <!-- Footer -->
         <footer class="footer">
             <p>Made with 💚 for Ubud travelers</p>
         </footer>
     </div>
 
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
     <script src="data.js"></script>
+    <script src="config.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
