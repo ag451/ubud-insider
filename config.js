@@ -149,6 +149,9 @@ async function batchFetchAllPlaces() {
         const details = await fetchPlaceDetails(place.name);
         
         if (details) {
+            // Preserve existing vibes from data.js before updating
+            const existingVibes = place.vibes || [];
+            
             // Update the place data
             place.address = details.address;
             place.phone = details.phone;
@@ -157,8 +160,10 @@ async function batchFetchAllPlaces() {
             place.reviews = details.reviews;
             place.photos = details.photos;
             place.website = details.website;
-            place.googleMapsUrl = details.url;
+            place.maps = details.url;  // Fixed: use 'maps' to match database column
+            place.googleMapsUrl = details.url;  // Keep for backward compatibility
             place.google_place_id = details.placeId;
+            place.vibes = existingVibes;  // Preserve vibes
             
             // Update coordinates if Google has better ones
             if (details.lat && details.lng) {
@@ -177,7 +182,8 @@ async function batchFetchAllPlaces() {
                     console.log(`💾 Saved ${place.name} to database`);
                     updatedCount++;
                 } else {
-                    console.warn(`⚠️ Failed to save ${place.name}`);
+                    const errorData = await response.json().catch(() => ({}));
+                    console.warn(`⚠️ Failed to save ${place.name}:`, response.status, errorData.error || '');
                 }
             } catch (err) {
                 console.error(`❌ Error saving ${place.name}:`, err);
