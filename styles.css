@@ -203,6 +203,86 @@ body {
     color: var(--text-primary);
 }
 
+/* Location Section */
+.location-section {
+    padding: 0 0 16px;
+}
+
+.location-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 4px;
+    transition: all 0.2s ease;
+}
+
+.location-container:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.location-icon {
+    width: 20px;
+    height: 20px;
+    margin-left: 12px;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.location-input {
+    flex: 1;
+    padding: 12px;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 0.9375rem;
+    outline: none;
+}
+
+.location-input::placeholder {
+    color: var(--text-muted);
+}
+
+.location-btn {
+    padding: 10px 16px;
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius-md);
+    color: #000;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.location-btn:hover {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+}
+
+.location-status {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.location-status.active {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid var(--accent);
+    color: var(--accent-light);
+}
+
 /* Categories */
 .category-section {
     padding: 0 0 16px;
@@ -915,4 +995,23 @@ body {
 
 .leaflet-container a:hover {
     color: var(--accent);
+}
+
+/* Distance Tag */
+.distance-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: var(--accent-glow);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-full);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--accent-light);
+}
+
+.distance-tag::before {
+    content: '📍';
+    font-size: 0.75rem;
 }

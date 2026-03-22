@@ -5,6 +5,7 @@ let currentView = 'list';
 let favorites = JSON.parse(localStorage.getItem('ubud_favorites') || '[]');
 let map = null;
 let markers = [];
+let userLocation = null; // { lat, lng, address }
 
 const API_BASE = '/api';
 
@@ -93,6 +94,126 @@ function setupEventListeners() {
       switchView(view);
     });
   });
+  
+  // Location input enter key
+  const locationInput = document.getElementById('locationInput');
+  if (locationInput) {
+    locationInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        setUserLocation();
+      }
+    });
+  }
+  
+  // Load saved location from localStorage
+  const savedLocation = localStorage.getItem('ubud_user_location');
+  if (savedLocation) {
+    userLocation = JSON.parse(savedLocation);
+    updateLocationUI();
+  }
+}
+
+// Set user location from address input
+async function setUserLocation() {
+  const input = document.getElementById('locationInput');
+  const status = document.getElementById('locationStatus');
+  const btn = document.getElementById('setLocationBtn');
+  
+  const address = input.value.trim();
+  if (!address) {
+    showLocationStatus('Please enter an address', 'error');
+    return;
+  }
+  
+  btn.disabled = true;
+  btn.textContent = '📍 Geocoding...';
+  
+  try {
+    // Use OpenStreetMap Nominatim for geocoding (free, no API key)
+    const query = encodeURIComponent(`${address}, Ubud, Bali, Indonesia`);
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`);
+    const data = await response.json();
+    
+    if (data && data.length > 0) {
+      userLocation = {
+        lat: parseFloat(data[0].lat),
+        lng: parseFloat(data[0].lon),
+        address: data[0].display_name.split(',')[0] // Short name
+      };
+      
+      // Save to localStorage
+      localStorage.setItem('ubud_user_location', JSON.stringify(userLocation));
+      
+      updateLocationUI();
+      showLocationStatus(`📍 ${userLocation.address} — Places sorted by distance`, 'success');
+      
+      // Re-render places sorted by distance
+      renderPlaces();
+      
+      // If map is open, re-center it
+      if (map && window.mapProvider === 'leaflet') {
+        map.setView([userLocation.lat, userLocation.lng], 15);
+      }
+    } else {
+      showLocationStatus('❌ Address not found. Try "Yoga Barn Ubud" or "Ubud Market"', 'error');
+    }
+  } catch (err) {
+    console.error('Geocoding error:', err);
+    showLocationStatus('❌ Error finding address. Please try again.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📍 Set Location';
+  }
+}
+
+// Clear user location
+function clearUserLocation() {
+  userLocation = null;
+  localStorage.removeItem('ubud_user_location');
+  
+  const input = document.getElementById('locationInput');
+  const status = document.getElementById('locationStatus');
+  const clearBtn = document.getElementById('clearLocationBtn');
+  
+  input.value = '';
+  status.style.display = 'none';
+  clearBtn.style.display = 'none';
+  
+  // Re-render without distance sorting
+  renderPlaces();
+}
+
+// Update location UI
+function updateLocationUI() {
+  if (!userLocation) return;
+  
+  const input = document.getElementById('locationInput');
+  const clearBtn = document.getElementById('clearLocationBtn');
+  
+  input.value = userLocation.address;
+  clearBtn.style.display = 'flex';
+}
+
+// Show location status message
+function showLocationStatus(message, type) {
+  const status = document.getElementById('locationStatus');
+  status.innerHTML = message;
+  status.style.display = 'flex';
+  status.className = 'location-status ' + (type === 'success' ? 'active' : '');
+}
+
+// Calculate distance between two points using Haversine formula
+function calculateDistance(lat1, lng1, lat2, lng2) {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng/2) * Math.sin(dLng/2);
+  
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c; // Distance in km
 }
 
 // Switch between list and map view
@@ -432,7 +553,7 @@ function renderMapCategories() {
 
 // Get filtered places
 function getFilteredPlaces() {
-  return UBUD_DATA.places.filter(place => {
+  let places = UBUD_DATA.places.filter(place => {
     if (currentCategory !== 'all' && place.category !== currentCategory) {
       return false;
     }
@@ -449,6 +570,31 @@ function getFilteredPlaces() {
     
     return true;
   });
+  
+  // Calculate and sort by distance if user location is set
+  if (userLocation && userLocation.lat && userLocation.lng) {
+    places = places.map(place => {
+      if (place.lat && place.lng) {
+        place.distance = calculateDistance(
+          userLocation.lat, userLocation.lng,
+          place.lat, place.lng
+        );
+      } else {
+        place.distance = null;
+      }
+      return place;
+    });
+    
+    // Sort by distance (null distances go to end)
+    places.sort((a, b) => {
+      if (a.distance === null && b.distance === null) return 0;
+      if (a.distance === null) return 1;
+      if (b.distance === null) return -1;
+      return a.distance - b.distance;
+    });
+  }
+  
+  return places;
 }
 
 // Render places list
@@ -462,7 +608,9 @@ function renderPlaces() {
   const categoryName = currentCategory === 'all' 
     ? 'all places' 
     : UBUD_DATA.categories.find(c => c.id === currentCategory)?.name.toLowerCase();
-  statsText.textContent = `Showing ${filtered.length} ${categoryName}`;
+  
+  const sortInfo = userLocation ? ' — sorted by distance 📍' : '';
+  statsText.textContent = `Showing ${filtered.length} ${categoryName}${sortInfo}`;
   
   if (filtered.length === 0) {
     container.style.display = 'none';
@@ -494,6 +642,7 @@ function renderPlaces() {
         <div class="place-meta">
           <span class="category-tag">${category?.icon || ''} ${category?.name || place.category}</span>
           ${place.area ? `<span class="area-tag">📍 ${escapeHtml(place.area)}</span>` : ''}
+          ${place.distance ? `<span class="distance-tag">${place.distance.toFixed(1)} km</span>` : ''}
           ${place.rating ? `<span class="place-rating"><span class="star">★</span> ${place.rating}</span>` : ''}
         </div>
         
@@ -535,6 +684,15 @@ function openPlaceModal(placeId) {
       <div class="modal-section-title">About</div>
       <p class="modal-text">${escapeHtml(place.description)}</p>
     </div>
+    
+    ${place.distance ? `
+      <div class="modal-section">
+        <div class="modal-section-title">Distance</div>
+        <p class="modal-text" style="color: var(--accent-light); font-weight: 600;">
+          📍 ${place.distance.toFixed(2)} km from your location
+        </p>
+      </div>
+    ` : ''}
     
     ${place.rating ? `
       <div class="modal-section">
