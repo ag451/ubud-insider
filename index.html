@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Ubud Insider | Local Recommendations</title>
-    <link rel="stylesheet" href="styles.css?v=11">
+    <link rel="stylesheet" href="styles.css?v=12">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Leaflet CSS (fallback map) -->
@@ -111,14 +111,24 @@
             <p>Try adjusting your search or filters</p>
         </div>
 
+        <!-- Map View - Inline for desktop, full screen for mobile -->
+        <div class="map-inline-container" id="mapInlineContainer" style="display: none;">
+            <div class="map-inline-controls">
+                <div class="map-category-scroll" id="inlineMapCategoryList">
+                    <button class="map-category-btn active" data-category="all" onclick="selectCategory('all')">All</button>
+                </div>
+            </div>
+            <div id="inlineMap" class="map-inline"></div>
+        </div>
+
         <!-- Footer -->
         <footer class="footer">
             <p>Made with <span class="footer-heart">❤️</span> in Ubud</p>
         </footer>
     </div>
 
-    <!-- Map View - Outside .app for full screen -->
-    <div class="map-container" id="mapContainer">
+    <!-- Map View - Mobile Only Full Screen -->
+    <div class="map-container mobile-only" id="mapContainer">
         <button class="map-close-btn" onclick="switchView('list')">✕</button>
         <div class="map-controls">
             <div class="map-category-scroll" id="mapCategoryList">
@@ -150,7 +160,7 @@
     <!-- Config and app -->
     <script src="data.js?v=7"></script>
     <script src="config.js?v=7"></script>
-    <script src="app.js?v=11"></script>
+    <script src="app.js?v=12"></script>
     
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>

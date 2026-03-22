@@ -356,27 +356,33 @@ function switchView(view) {
     btn.classList.toggle('active', btn.dataset.view === view);
   });
   
-  // Get elements
+  const isMobile = window.innerWidth <= 768;
+  
+  if (isMobile) {
+    // Mobile: Full screen map overlay
+    switchViewMobile(view);
+  } else {
+    // Desktop: Inline map within app
+    switchViewDesktop(view);
+  }
+}
+
+// Mobile view switch - full screen overlay
+function switchViewMobile(view) {
   const appContainer = document.getElementById('appContainer');
   const mapContainer = document.getElementById('mapContainer');
+  const placesList = document.getElementById('placesList');
   
   if (view === 'map') {
-    // Hide app, show map
     appContainer.style.display = 'none';
     mapContainer.classList.add('active');
     
-    // Render map categories if needed
     renderMapCategories();
     
-    // Initialize map if not already done
     if (!map) {
-      if (window.useLeaflet) {
-        initLeafletMap();
-      }
-      // If Google Maps, it will auto-init via callback
+      initLeafletMap();
     }
     
-    // Update map
     setTimeout(() => {
       if (window.mapProvider === 'leaflet' && map) {
         map.invalidateSize();
@@ -384,11 +390,119 @@ function switchView(view) {
       updateMapMarkers();
     }, 100);
   } else {
-    // Show app, hide map
     appContainer.style.display = 'block';
     mapContainer.classList.remove('active');
-    
+    placesList.style.display = 'flex';
     renderPlaces();
+  }
+}
+
+// Desktop view switch - inline map
+function switchViewDesktop(view) {
+  const placesList = document.getElementById('placesList');
+  const mapInlineContainer = document.getElementById('mapInlineContainer');
+  
+  if (view === 'map') {
+    placesList.style.display = 'none';
+    mapInlineContainer.style.display = 'block';
+    
+    renderInlineMapCategories();
+    
+    if (!window.inlineMap) {
+      initInlineLeafletMap();
+    }
+    
+    setTimeout(() => {
+      if (window.inlineMap) {
+        window.inlineMap.invalidateSize();
+      }
+      updateInlineMapMarkers();
+    }, 100);
+  } else {
+    placesList.style.display = 'flex';
+    mapInlineContainer.style.display = 'none';
+    renderPlaces();
+  }
+}
+
+// Render categories for inline map
+function renderInlineMapCategories() {
+  const container = document.getElementById('inlineMapCategoryList');
+  if (container.children.length > 1) return; // Already rendered
+  
+  UBUD_DATA.categories.forEach(cat => {
+    const btn = document.createElement('button');
+    btn.className = 'map-category-btn';
+    btn.dataset.category = cat.id;
+    btn.textContent = `${cat.icon} ${cat.name}`;
+    btn.onclick = () => selectCategory(cat.id);
+    container.appendChild(btn);
+  });
+}
+
+// Initialize inline Leaflet map for desktop
+function initInlineLeafletMap() {
+  const mapCenter = userLocation || UBUD_DATA.mapCenter;
+  
+  window.inlineMap = L.map('inlineMap').setView([mapCenter.lat, mapCenter.lng], 14);
+  
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap',
+    maxZoom: 19
+  }).addTo(window.inlineMap);
+  
+  // Add dark filter via CSS
+  document.getElementById('inlineMap').style.filter = 'invert(1) hue-rotate(180deg) brightness(0.8)';
+}
+
+// Update markers on inline map
+function updateInlineMapMarkers() {
+  if (!window.inlineMap) return;
+  
+  // Clear existing markers
+  window.inlineMap.eachLayer(layer => {
+    if (layer instanceof L.Marker) {
+      window.inlineMap.removeLayer(layer);
+    }
+  });
+  
+  const filtered = getFilteredPlaces();
+  
+  filtered.forEach(place => {
+    if (!place.lat || !place.lng) return;
+    
+    const category = UBUD_DATA.categories.find(c => c.id === place.category);
+    const icon = category?.icon || '📍';
+    
+    const customIcon = L.divIcon({
+      className: 'custom-marker',
+      html: `<div style="width: 36px; height: 36px; background: #22c55e; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; border: 2px solid #0a0a0a; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">${icon}</div>`,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18]
+    });
+    
+    L.marker([place.lat, place.lng], { icon: customIcon })
+      .addTo(window.inlineMap)
+      .bindPopup(`
+        <div style="font-family: Inter, sans-serif; min-width: 200px;">
+          <div style="font-weight: 600; font-size: 1rem; margin-bottom: 4px;">${icon} ${escapeHtml(place.name)}</div>
+          <div style="color: #888; font-size: 0.85rem; margin-bottom: 8px;">${escapeHtml(place.description.substring(0, 60))}...</div>
+          <button onclick="openPlaceModal(${place.id})" style="background: #22c55e; color: #000; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">View Details</button>
+        </div>
+      `);
+  });
+  
+  // Fit bounds if we have markers
+  const markers = [];
+  window.inlineMap.eachLayer(layer => {
+    if (layer instanceof L.Marker) {
+      markers.push(layer);
+    }
+  });
+  
+  if (markers.length > 0) {
+    const group = new L.featureGroup(markers);
+    window.inlineMap.fitBounds(group.getBounds().pad(0.1));
   }
 }
 
