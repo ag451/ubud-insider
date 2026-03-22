@@ -67,9 +67,14 @@
         <!-- Stats -->
         <div class="stats-bar">
             <span id="statsText">Showing all places</span>
-            <span class="favorites-count" id="favCount" style="display: none;">
-                ⭐ <span id="favCountNum">0</span> saved
-            </span>
+            <div class="stats-actions">
+                <span class="favorites-count" id="favCount" style="display: none;">
+                    ⭐ <span id="favCountNum">0</span> saved
+                </span>
+                <button id="syncBtn" class="sync-btn" onclick="syncWithGoogle()">
+                    🔄 Sync Places
+                </button>
+            </div>
         </div>
 
         <!-- List View -->

@@ -390,3 +390,44 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+// Sync with Google Places API
+async function syncWithGoogle() {
+    const btn = document.getElementById('syncBtn');
+    btn.disabled = true;
+    btn.textContent = '🔄 Syncing...';
+    
+    try {
+        console.log('🚀 Starting sync with Google Places...');
+        
+        // Test the API first
+        const testResponse = await fetch('/api/places/search?query=Milk%20and%20Madu%20Ubud');
+        const testData = await testResponse.json();
+        
+        if (testData.error) {
+            alert('❌ API Error: ' + testData.error + '\n\nMake sure GOOGLE_PLACES_API_KEY is set in Railway environment variables.');
+            console.error('API Error:', testData.error);
+            return;
+        }
+        
+        if (testData.status === 'REQUEST_DENIED' || testData.status === 'INVALID_REQUEST') {
+            alert('❌ Google API Error: ' + testData.status + '\n\nCheck that your API key is valid and has Places API enabled.');
+            console.error('Google API Error:', testData);
+            return;
+        }
+        
+        console.log('✅ API test passed, starting batch fetch...');
+        
+        // Run the batch fetch
+        await batchFetchAllPlaces();
+        
+        alert('✅ Sync complete! Check console for details.');
+        
+    } catch (err) {
+        console.error('Sync error:', err);
+        alert('❌ Sync failed: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🔄 Sync Places';
+    }
+}
