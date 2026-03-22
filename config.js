@@ -4,7 +4,7 @@
 const GOOGLE_PLACES_CONFIG = {
     // Google Maps API Key (for frontend map)
     // Set your API key here (starts with AIza...):
-    apiKey: 'AIzaSyBxn_Zy0Dx06qf0ZYGEaoDSBXHQZaarKIE',
+    apiKey: 'API_KEY',
     
     // Backend proxy endpoints (no API key needed in browser)
     searchEndpoint: '/api/places/search',
