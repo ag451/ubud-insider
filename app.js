@@ -943,6 +943,27 @@ function toggleVibe(vibeId) {
 function selectCategory(category) {
   currentCategory = category;
   
+  // Reset vibes and search when "All" is clicked
+  if (category === 'all') {
+    selectedVibes = [];
+    searchTerm = '';
+    
+    // Reset vibe buttons UI
+    document.querySelectorAll('.vibe-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    
+    // Reset search input
+    const searchInput = document.getElementById('searchInput');
+    const clearBtn = document.getElementById('clearSearch');
+    if (searchInput) searchInput.value = '';
+    if (clearBtn) clearBtn.style.display = 'none';
+    
+    // Hide dropdown if open
+    const searchDropdown = document.getElementById('searchDropdown');
+    if (searchDropdown) searchDropdown.style.display = 'none';
+  }
+  
   document.querySelectorAll('.category-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.category === category);
   });
