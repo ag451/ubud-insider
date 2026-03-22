@@ -1,59 +1,33 @@
 // Ubud Insider - Google Places API Integration
-// Get your API key from: https://developers.google.com/maps/documentation/places/web-service/get-api-key
+// API key should be set as GOOGLE_PLACES_API_KEY environment variable in Railway
 
 const GOOGLE_PLACES_CONFIG = {
-    // 🔑 Add your Google Places API key here
-    apiKey: 'AIzaSyBxn_Zy0Dx06qf0ZYGEaoDSBXHQZaarKIE',
-    
-    // API configuration
-    baseUrl: 'https://maps.googleapis.com/maps/api/place',
+    // Backend proxy endpoints (no API key needed in browser)
+    searchEndpoint: '/api/places/search',
+    detailsEndpoint: '/api/places/details',
+    photoEndpoint: '/api/places/photo',
     
     // Enable Google Places features
-    enabled: true, // Set to true after adding your API key
+    enabled: true,
     
     // Cache duration (24 hours)
-    cacheDuration: 24 * 60 * 60 * 1000,
-    
-    // Fields to fetch from Google Places
-    fields: ['name', 'formatted_address', 'formatted_phone_number', 'opening_hours', 'rating', 'reviews', 'photos', 'website', 'url', 'geometry']
+    cacheDuration: 24 * 60 * 60 * 1000
 };
 
-// Initialize Google Places API
+// Initialize Google Places API (now uses backend proxy)
 async function initGooglePlaces() {
-    if (!GOOGLE_PLACES_CONFIG.enabled || !GOOGLE_PLACES_CONFIG.apiKey) {
-        console.log('ℹ️ Google Places API not configured. Add your API key to config.js for enhanced features.');
+    if (!GOOGLE_PLACES_CONFIG.enabled) {
+        console.log('ℹ️ Google Places API not enabled.');
         return false;
     }
     
-    // Load Google Maps JavaScript API
-    return new Promise((resolve) => {
-        if (window.google?.maps?.places) {
-            resolve(true);
-            return;
-        }
-        
-        const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_PLACES_CONFIG.apiKey}&libraries=places&callback=initMap`;
-        script.async = true;
-        script.defer = true;
-        
-        window.initMap = () => {
-            console.log('✅ Google Places API loaded');
-            resolve(true);
-        };
-        
-        script.onerror = () => {
-            console.error('❌ Failed to load Google Places API');
-            resolve(false);
-        };
-        
-        document.head.appendChild(script);
-    });
+    console.log('✅ Google Places API ready (via backend proxy)');
+    return true;
 }
 
-// Fetch place details from Google Places API
+// Fetch place details from backend proxy
 async function fetchPlaceDetails(placeName, location = { lat: -8.5069, lng: 115.2625 }) {
-    if (!GOOGLE_PLACES_CONFIG.enabled || !GOOGLE_PLACES_CONFIG.apiKey) {
+    if (!GOOGLE_PLACES_CONFIG.enabled) {
         return null;
     }
     
@@ -69,13 +43,10 @@ async function fetchPlaceDetails(placeName, location = { lat: -8.5069, lng: 115.
     }
     
     try {
-        // Step 1: Search for the place
-        const searchUrl = `${GOOGLE_PLACES_CONFIG.baseUrl}/findplacefromtext/json?` +
-            `input=${encodeURIComponent(placeName + ', Ubud, Bali')}&` +
-            `inputtype=textquery&` +
-            `fields=place_id,geometry&` +
-            `locationbias=circle:5000@${location.lat},${location.lng}&` +
-            `key=${GOOGLE_PLACES_CONFIG.apiKey}`;
+        // Step 1: Search for the place via backend proxy
+        const searchUrl = `${GOOGLE_PLACES_CONFIG.searchEndpoint}?` +
+            `query=${encodeURIComponent(placeName + ', Ubud, Bali')}&` +
+            `location=${location.lat},${location.lng}`;
         
         const searchResponse = await fetch(searchUrl);
         const searchData = await searchResponse.json();
@@ -88,11 +59,8 @@ async function fetchPlaceDetails(placeName, location = { lat: -8.5069, lng: 115.
         const placeId = searchData.candidates[0].place_id;
         const geometry = searchData.candidates[0].geometry;
         
-        // Step 2: Get place details
-        const detailsUrl = `${GOOGLE_PLACES_CONFIG.baseUrl}/details/json?` +
-            `place_id=${placeId}&` +
-            `fields=${GOOGLE_PLACES_CONFIG.fields.join(',')}&` +
-            `key=${GOOGLE_PLACES_CONFIG.apiKey}`;
+        // Step 2: Get place details via backend proxy
+        const detailsUrl = `${GOOGLE_PLACES_CONFIG.detailsEndpoint}?placeId=${placeId}`;
         
         const detailsResponse = await fetch(detailsUrl);
         const detailsData = await detailsResponse.json();
@@ -142,16 +110,15 @@ async function fetchPlaceDetails(placeName, location = { lat: -8.5069, lng: 115.
     }
 }
 
-// Get photo URL from Google Places
+// Get photo URL from backend proxy
 function getPlacePhotoUrl(photoReference, maxWidth = 400) {
-    if (!GOOGLE_PLACES_CONFIG.enabled || !GOOGLE_PLACES_CONFIG.apiKey || !photoReference) {
+    if (!GOOGLE_PLACES_CONFIG.enabled || !photoReference) {
         return null;
     }
     
-    return `${GOOGLE_PLACES_CONFIG.baseUrl}/photo?` +
-        `maxwidth=${maxWidth}&` +
-        `photoreference=${photoReference}&` +
-        `key=${GOOGLE_PLACES_CONFIG.apiKey}`;
+    return `${GOOGLE_PLACES_CONFIG.photoEndpoint}?` +
+        `maxWidth=${maxWidth}&` +
+        `photoReference=${photoReference}`;
 }
 
 // Batch fetch all places (call this to populate data)
