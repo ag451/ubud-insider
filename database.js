@@ -34,6 +34,7 @@ function initDatabase() {
           website TEXT,
           hours TEXT,
           google_place_id TEXT,
+          vibes TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
@@ -88,7 +89,20 @@ function getAllPlaces(db) {
         reject(err);
         return;
       }
-      resolve(rows);
+      // Parse vibes from JSON for each place
+      const places = rows.map(row => {
+        if (row.vibes) {
+          try {
+            row.vibes = JSON.parse(row.vibes);
+          } catch (e) {
+            row.vibes = [];
+          }
+        } else {
+          row.vibes = [];
+        }
+        return row;
+      });
+      resolve(places);
     });
   });
 }
@@ -104,6 +118,17 @@ function getPlaceById(db, id) {
       if (!place) {
         resolve(null);
         return;
+      }
+
+      // Parse vibes from JSON
+      if (place.vibes) {
+        try {
+          place.vibes = JSON.parse(place.vibes);
+        } catch (e) {
+          place.vibes = [];
+        }
+      } else {
+        place.vibes = [];
       }
 
       // Get reviews
@@ -133,14 +158,17 @@ function upsertPlace(db, place) {
   return new Promise((resolve, reject) => {
     const {
       id, name, category, description, area, maps, lat, lng,
-      rating, address, phone, website, hours, google_place_id
+      rating, address, phone, website, hours, google_place_id, vibes
     } = place;
+
+    // Convert vibes array to JSON string for storage
+    const vibesJson = vibes ? JSON.stringify(vibes) : null;
 
     db.run(`
       INSERT INTO places (
         id, name, category, description, area, maps, lat, lng,
-        rating, address, phone, website, hours, google_place_id, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        rating, address, phone, website, hours, google_place_id, vibes, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       ON CONFLICT(id) DO UPDATE SET
         name = excluded.name,
         category = excluded.category,
@@ -155,9 +183,10 @@ function upsertPlace(db, place) {
         website = excluded.website,
         hours = excluded.hours,
         google_place_id = excluded.google_place_id,
+        vibes = excluded.vibes,
         updated_at = CURRENT_TIMESTAMP
     `, [id, name, category, description, area, maps, lat, lng,
-        rating, address, phone, website, hours, google_place_id], function(err) {
+        rating, address, phone, website, hours, google_place_id, vibesJson], function(err) {
       if (err) {
         reject(err);
         return;
@@ -278,20 +307,33 @@ function getAllPlacesWithWhy(db) {
     db.all(`
       SELECT p.*, w.sentence as why_sentence, w.tags as why_tags
       FROM places p
-      LEFT JOIN why_this_place w ON p.id = w.id
+      LEFT JOIN why_this_place w ON p.id = w.place_id
       ORDER BY p.id
     `, [], (err, rows) => {
       if (err) {
         reject(err);
         return;
       }
-      const places = rows.map(row => ({
-        ...row,
-        why_this_place: row.why_sentence ? {
-          sentence: row.why_sentence,
-          tags: row.why_tags ? JSON.parse(row.why_tags) : []
-        } : null
-      }));
+      const places = rows.map(row => {
+        // Parse vibes from JSON
+        if (row.vibes) {
+          try {
+            row.vibes = JSON.parse(row.vibes);
+          } catch (e) {
+            row.vibes = [];
+          }
+        } else {
+          row.vibes = [];
+        }
+        
+        return {
+          ...row,
+          why_this_place: row.why_sentence ? {
+            sentence: row.why_sentence,
+            tags: row.why_tags ? JSON.parse(row.why_tags) : []
+          } : null
+        };
+      });
       resolve(places);
     });
   });
