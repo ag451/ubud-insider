@@ -1016,8 +1016,10 @@ body {
         grid-template-columns: 1fr;
     }
     
+    /* Map container - keep full screen on mobile, handled by main styles */
     .map-container {
-        height: 500px;
+        height: 100vh;
+        height: 100dvh;
     }
     
     .modal-content {
