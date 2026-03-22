@@ -247,11 +247,15 @@ function initLeafletMap() {
   
   map = L.map('map').setView([mapCenter.lat, mapCenter.lng], 15);
   
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-    subdomains: 'abcd',
-    maxZoom: 19
+  // Use OpenStreetMap tiles with dark theme via CSS filter
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 19,
+    crossOrigin: true
   }).addTo(map);
+  
+  // Apply dark filter to map tiles via CSS
+  mapElement.style.filter = 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)';
   
   updateMapMarkers();
 }
