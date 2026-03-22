@@ -141,6 +141,7 @@ body {
 /* Search */
 .search-section {
     padding: 0 0 20px;
+    position: relative;
 }
 
 .search-container {
@@ -1158,8 +1159,6 @@ body {
 /* Vibe Filters Section */
 .vibe-section {
     padding: 0 0 16px;
-    border-top: 1px solid var(--border-subtle);
-    margin-top: 8px;
 }
 
 .vibe-label {
@@ -1168,7 +1167,7 @@ body {
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    padding: 12px 4px 8px;
+    padding: 4px 4px 8px;
 }
 
 .vibe-scroll {
@@ -1236,17 +1235,16 @@ body {
 /* Search Autocomplete Dropdown */
 .search-autocomplete {
     position: absolute;
-    top: 100%;
+    top: calc(100% + 4px);
     left: 0;
     right: 0;
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    border-radius: var(--radius-lg);
     max-height: 300px;
     overflow-y: auto;
-    z-index: 200;
+    z-index: 1000;
     box-shadow: var(--shadow-lg);
-    margin-top: 4px;
 }
 
 .search-autocomplete-item {
@@ -1259,8 +1257,13 @@ body {
     gap: 12px;
 }
 
+.search-autocomplete-item:first-child {
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
 .search-autocomplete-item:last-child {
     border-bottom: none;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
 .search-autocomplete-item:hover,
