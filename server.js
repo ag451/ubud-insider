@@ -7,6 +7,8 @@ const {
   getPlaceById,
   upsertPlace,
   deletePlace,
+  addReview,
+  addPhoto,
   importInitialData
 } = require('./database');
 
@@ -195,11 +197,46 @@ app.post('/api/places', async (req, res) => {
   }
 });
 
-// Update place
+// Update place with reviews and photos
 app.put('/api/places/:id', async (req, res) => {
   try {
     const place = { ...req.body, id: parseInt(req.params.id) };
+    
+    // Update main place data
     await upsertPlace(db, place);
+    
+    // Save reviews if provided
+    if (place.reviews && Array.isArray(place.reviews)) {
+      // Delete old reviews first
+      await new Promise((resolve, reject) => {
+        db.run('DELETE FROM reviews WHERE place_id = ?', [place.id], (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+      
+      // Insert new reviews
+      for (const review of place.reviews.slice(0, 5)) { // Max 5 reviews
+        await addReview(db, place.id, review);
+      }
+    }
+    
+    // Save photos if provided
+    if (place.photos && Array.isArray(place.photos)) {
+      // Delete old photos first
+      await new Promise((resolve, reject) => {
+        db.run('DELETE FROM photos WHERE place_id = ?', [place.id], (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+      
+      // Insert new photos
+      for (const photo of place.photos.slice(0, 5)) { // Max 5 photos
+        await addPhoto(db, place.id, photo);
+      }
+    }
+    
     res.json({ message: 'Place updated' });
   } catch (err) {
     console.error('Error updating place:', err);

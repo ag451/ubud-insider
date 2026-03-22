@@ -32,6 +32,7 @@ function initDatabase() {
           address TEXT,
           phone TEXT,
           website TEXT,
+          hours TEXT,
           google_place_id TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -121,14 +122,14 @@ function upsertPlace(db, place) {
   return new Promise((resolve, reject) => {
     const {
       id, name, category, description, area, maps, lat, lng,
-      rating, address, phone, website, google_place_id
+      rating, address, phone, website, hours, google_place_id
     } = place;
 
     db.run(`
       INSERT INTO places (
         id, name, category, description, area, maps, lat, lng,
-        rating, address, phone, website, google_place_id, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        rating, address, phone, website, hours, google_place_id, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       ON CONFLICT(id) DO UPDATE SET
         name = excluded.name,
         category = excluded.category,
@@ -141,10 +142,11 @@ function upsertPlace(db, place) {
         address = excluded.address,
         phone = excluded.phone,
         website = excluded.website,
+        hours = excluded.hours,
         google_place_id = excluded.google_place_id,
         updated_at = CURRENT_TIMESTAMP
     `, [id, name, category, description, area, maps, lat, lng,
-        rating, address, phone, website, google_place_id], function(err) {
+        rating, address, phone, website, hours, google_place_id], function(err) {
       if (err) {
         reject(err);
         return;

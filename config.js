@@ -140,6 +140,7 @@ async function batchFetchAllPlaces() {
     }
     
     console.log('🚀 Starting batch fetch of all places...');
+    let updatedCount = 0;
     
     for (const place of UBUD_DATA.places) {
         // Add delay to avoid rate limiting
@@ -157,6 +158,7 @@ async function batchFetchAllPlaces() {
             place.photos = details.photos;
             place.website = details.website;
             place.googleMapsUrl = details.url;
+            place.google_place_id = details.placeId;
             
             // Update coordinates if Google has better ones
             if (details.lat && details.lng) {
@@ -164,11 +166,26 @@ async function batchFetchAllPlaces() {
                 place.lng = details.lng;
             }
             
-            console.log(`✅ Updated ${place.name}`);
+            // SAVE TO DATABASE via API
+            try {
+                const response = await fetch(`/api/places/${place.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(place)
+                });
+                if (response.ok) {
+                    console.log(`💾 Saved ${place.name} to database`);
+                    updatedCount++;
+                } else {
+                    console.warn(`⚠️ Failed to save ${place.name}`);
+                }
+            } catch (err) {
+                console.error(`❌ Error saving ${place.name}:`, err);
+            }
         }
     }
     
-    console.log('✅ Batch fetch complete!');
+    console.log(`✅ Batch fetch complete! Updated ${updatedCount} places.`);
     
     // Refresh the UI
     if (typeof renderPlaces === 'function') {
@@ -177,6 +194,8 @@ async function batchFetchAllPlaces() {
     if (typeof updateMapMarkers === 'function') {
         updateMapMarkers();
     }
+    
+    return updatedCount;
 }
 
 // Check if coordinates look correct for Ubud area
