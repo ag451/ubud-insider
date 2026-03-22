@@ -1,4 +1,4 @@
-// Ubud Insider - Google Places API Integration
+// Ubud Insider Google Places API Integration
 // API key can be set via GOOGLE_PLACES_CONFIG.apiKey below
 
 const GOOGLE_PLACES_CONFIG = {
