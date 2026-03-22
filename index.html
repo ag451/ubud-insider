@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Ubud Insider | Local Recommendations</title>
-    <link rel="stylesheet" href="styles.css?v=15">
+    <link rel="stylesheet" href="styles.css?v=17">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Leaflet CSS (fallback map) -->
@@ -64,18 +64,16 @@
         </div>
 
         <!-- Search Bar -->
-        <div class="search-section">
-            <div class="search-wrapper" style="position: relative;">
-                <div class="search-container">
-                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <path d="m21 21-4.35-4.35"></path>
-                    </svg>
-                    <input type="text" id="searchInput" class="search-input" placeholder="Search places, food, yoga..." autocomplete="off">
-                    <button id="clearSearch" class="clear-btn" style="display: none;">✕</button>
-                </div>
-                <div id="searchAutocomplete" class="search-autocomplete" style="display: none;"></div>
+        <div class="search-section" id="searchSection">
+            <div class="search-box">
+                <svg class="search-box-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <input type="text" id="searchInput" class="search-box-input" placeholder="Search places, food, yoga..." autocomplete="off">
+                <button id="clearSearch" class="search-box-clear" style="display: none;" aria-label="Clear search">✕</button>
             </div>
+            <div id="searchDropdown" class="search-dropdown" style="display: none;"></div>
         </div>
 
         <!-- Category Filter -->
@@ -171,7 +169,7 @@
     <!-- Config and app -->
     <script src="data.js?v=7"></script>
     <script src="config.js?v=7"></script>
-    <script src="app.js?v=16"></script>
+    <script src="app.js?v=17"></script>
     
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>

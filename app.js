@@ -68,8 +68,8 @@ function setupEventListeners() {
   // Search input with autocomplete
   const searchInput = document.getElementById('searchInput');
   const clearBtn = document.getElementById('clearSearch');
-  const searchAutocomplete = document.getElementById('searchAutocomplete');
-  let searchAutocompleteTimeout = null;
+  const searchDropdown = document.getElementById('searchDropdown');
+  let searchTimeout = null;
   let searchSelectedIndex = -1;
   let searchResults = [];
   
@@ -81,8 +81,8 @@ function setupEventListeners() {
       clearBtn.style.display = searchTerm ? 'flex' : 'none';
       
       // Clear previous timeout
-      if (searchAutocompleteTimeout) {
-        clearTimeout(searchAutocompleteTimeout);
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
       }
       
       // Hide dropdown if input is empty
@@ -96,10 +96,10 @@ function setupEventListeners() {
         return;
       }
       
-      // Debounce and show autocomplete
-      searchAutocompleteTimeout = setTimeout(() => {
+      // Debounce and show dropdown
+      searchTimeout = setTimeout(() => {
         searchResults = getSearchAutocompleteResults(value);
-        renderSearchAutocomplete(searchResults);
+        renderSearchDropdown(searchResults);
       }, 150);
       
       if (currentView === 'list') {
@@ -109,7 +109,7 @@ function setupEventListeners() {
       }
     });
     
-    // Keyboard navigation for search autocomplete
+    // Keyboard navigation for search dropdown
     searchInput.addEventListener('keydown', (e) => {
       if (searchResults.length === 0) return;
       
@@ -117,23 +117,23 @@ function setupEventListeners() {
         case 'ArrowDown':
           e.preventDefault();
           searchSelectedIndex = Math.min(searchSelectedIndex + 1, searchResults.length - 1);
-          renderSearchAutocompleteSelection();
+          renderSearchDropdownSelection();
           break;
         case 'ArrowUp':
           e.preventDefault();
           searchSelectedIndex = Math.max(searchSelectedIndex - 1, -1);
-          renderSearchAutocompleteSelection();
+          renderSearchDropdownSelection();
           break;
         case 'Enter':
           e.preventDefault();
           if (searchSelectedIndex >= 0) {
             selectSearchResult(searchResults[searchSelectedIndex]);
           } else {
-            hideSearchAutocomplete();
+            hideSearchDropdown();
           }
           break;
         case 'Escape':
-          hideSearchAutocomplete();
+          hideSearchDropdown();
           break;
       }
     });
@@ -141,12 +141,12 @@ function setupEventListeners() {
     // Hide dropdown when clicking outside
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.search-section')) {
-        hideSearchAutocomplete();
+        hideSearchDropdown();
       }
     });
   }
   
-  // Search autocomplete helper functions
+  // Search dropdown helper functions
   function getSearchAutocompleteResults(query) {
     const lowerQuery = query.toLowerCase();
     return UBUD_DATA.places
@@ -158,36 +158,36 @@ function setupEventListeners() {
       .slice(0, 5); // Max 5 results
   }
   
-  function renderSearchAutocomplete(results) {
+  function renderSearchDropdown(results) {
     if (results.length === 0) {
-      hideSearchAutocomplete();
+      hideSearchDropdown();
       return;
     }
     
     const categoryMap = {};
     UBUD_DATA.categories.forEach(cat => categoryMap[cat.id] = cat);
     
-    searchAutocomplete.innerHTML = results.map((place, index) => {
+    searchDropdown.innerHTML = results.map((place, index) => {
       const category = categoryMap[place.category];
       const vibe = place.vibes && place.vibes[0] ? UBUD_DATA.vibes.find(v => v.id === place.vibes[0]) : null;
       
       return `
-        <div class="search-autocomplete-item" data-index="${index}" onclick="selectSearchResultByIndex(${index})">
-          <span class="search-autocomplete-icon">${category?.icon || '📍'}</span>
+        <div class="search-dropdown-item" data-index="${index}" onclick="selectSearchResultByIndex(${index})">
+          <span class="search-dropdown-icon">${category?.icon || '📍'}</span>
           <div style="flex: 1; min-width: 0;">
-            <div class="search-autocomplete-text">${escapeHtml(place.name)}</div>
-            <div class="search-autocomplete-category">${category?.name || ''} ${vibe ? '• ' + vibe.name : ''}</div>
+            <div class="search-dropdown-text">${escapeHtml(place.name)}</div>
+            <div class="search-dropdown-meta">${category?.name || ''} ${vibe ? '• ' + vibe.name : ''}</div>
           </div>
         </div>
       `;
     }).join('');
     
-    searchAutocomplete.style.display = 'block';
+    searchDropdown.style.display = 'block';
     searchSelectedIndex = -1;
   }
   
-  function renderSearchAutocompleteSelection() {
-    const items = searchAutocomplete.querySelectorAll('.search-autocomplete-item');
+  function renderSearchDropdownSelection() {
+    const items = searchDropdown.querySelectorAll('.search-dropdown-item');
     items.forEach((item, index) => {
       item.classList.toggle('selected', index === searchSelectedIndex);
     });
@@ -200,7 +200,7 @@ function setupEventListeners() {
   function selectSearchResult(place) {
     searchInput.value = place.name;
     searchTerm = place.name.toLowerCase();
-    hideSearchAutocomplete();
+    hideSearchDropdown();
     clearBtn.style.display = 'flex';
     
     if (currentView === 'list') {
@@ -213,8 +213,8 @@ function setupEventListeners() {
     openPlaceModal(place.id);
   }
   
-  function hideSearchAutocomplete() {
-    searchAutocomplete.style.display = 'none';
+  function hideSearchDropdown() {
+    searchDropdown.style.display = 'none';
     searchResults = [];
     searchSelectedIndex = -1;
   }
@@ -223,7 +223,7 @@ function setupEventListeners() {
     searchInput.value = '';
     searchTerm = '';
     clearBtn.style.display = 'none';
-    hideSearchAutocomplete();
+    hideSearchDropdown();
     if (currentView === 'list') {
       renderPlaces();
     } else {
