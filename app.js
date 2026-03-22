@@ -589,13 +589,12 @@ function initInlineLeafletMap() {
   
   window.inlineMap = L.map('inlineMap').setView([mapCenter.lat, mapCenter.lng], 14);
   
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap',
+  // Use CartoDB dark matter tiles for dark theme
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains: 'abcd',
     maxZoom: 19
   }).addTo(window.inlineMap);
-  
-  // Add dark filter via CSS
-  document.getElementById('inlineMap').style.filter = 'invert(1) hue-rotate(180deg) brightness(0.8)';
 }
 
 // Update markers on inline map
@@ -756,15 +755,12 @@ function initLeafletMap() {
   
   map = L.map('map').setView([mapCenter.lat, mapCenter.lng], 15);
   
-  // Use OpenStreetMap tiles with dark theme via CSS filter
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors',
-    maxZoom: 19,
-    crossOrigin: true
+  // Use CartoDB dark matter tiles for dark theme
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom: 19
   }).addTo(map);
-  
-  // Apply dark filter to map tiles via CSS
-  mapElement.style.filter = 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)';
   
   updateMapMarkers();
 }
