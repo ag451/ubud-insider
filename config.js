@@ -1,10 +1,9 @@
 // Ubud Insider - Google Places API Integration
-// API key should be set as GOOGLE_PLACES_API_KEY environment variable in Railway
+// API key can be set via GOOGLE_PLACES_CONFIG.apiKey below
 
 const GOOGLE_PLACES_CONFIG = {
     // Google Maps API Key (for frontend map)
-    // Set this to your actual Google Maps API key to enable Google Maps
-    // Leave empty to use Leaflet (free, no API key needed)
+    // Set your API key here (starts with AIza...):
     apiKey: '',
     
     // Backend proxy endpoints (no API key needed in browser)
@@ -19,9 +18,11 @@ const GOOGLE_PLACES_CONFIG = {
     cacheDuration: 24 * 60 * 60 * 1000
 };
 
-// Check if we should use Google Maps or Leaflet
-function shouldUseGoogleMaps() {
-    return GOOGLE_PLACES_CONFIG.apiKey && GOOGLE_PLACES_CONFIG.apiKey.length > 10;
+// Log which map provider will be used
+if (GOOGLE_PLACES_CONFIG.apiKey && GOOGLE_PLACES_CONFIG.apiKey.length > 10) {
+    console.log('✅ Google Maps API key configured');
+} else {
+    console.log('ℹ️ No Google Maps API key - will use Leaflet fallback');
 }
 
 // Initialize Google Places API (now uses backend proxy)
