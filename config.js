@@ -3,7 +3,8 @@
 
 const GOOGLE_PLACES_CONFIG = {
     // Google Maps API Key (for frontend map)
-    // Set this to your actual Google Maps API key
+    // Set this to your actual Google Maps API key to enable Google Maps
+    // Leave empty to use Leaflet (free, no API key needed)
     apiKey: '',
     
     // Backend proxy endpoints (no API key needed in browser)
@@ -17,6 +18,11 @@ const GOOGLE_PLACES_CONFIG = {
     // Cache duration (24 hours)
     cacheDuration: 24 * 60 * 60 * 1000
 };
+
+// Check if we should use Google Maps or Leaflet
+function shouldUseGoogleMaps() {
+    return GOOGLE_PLACES_CONFIG.apiKey && GOOGLE_PLACES_CONFIG.apiKey.length > 10;
+}
 
 // Initialize Google Places API (now uses backend proxy)
 async function initGooglePlaces() {
