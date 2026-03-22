@@ -500,14 +500,7 @@ function renderPlaces() {
         <p class="place-description">${escapeHtml(place.description)}</p>
         
         <div class="card-actions">
-          ${place.maps ? `
-            <a href="${place.maps}" target="_blank" rel="noopener" class="maps-link" onclick="event.stopPropagation()">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polygon points="1 6 1 22 8 18 16 22 21 18 21 2 16 6 8 2 1 6"></polygon>
-              </svg>
-              Directions
-            </a>
-          ` : ''}
+          ${getCardMapsLink(place)}
           <button class="details-btn" onclick="event.stopPropagation(); openPlaceModal(${place.id})">
             Details →
           </button>
@@ -587,19 +580,66 @@ function openPlaceModal(placeId) {
     ` : ''}
     
     <div class="modal-section" style="margin-top: 24px;">
-      ${place.maps ? `
-        <a href="${place.maps}" target="_blank" rel="noopener" class="maps-link" style="width: 100%; justify-content: center; padding: 12px; font-size: 1rem;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polygon points="1 6 1 22 8 18 16 22 21 18 21 2 16 6 8 2 1 6"></polygon>
-          </svg>
-          Open in Google Maps
-        </a>
-      ` : ''}
+      ${getGoogleMapsLink(place)}
     </div>
   `;
   
   document.getElementById('placeModal').style.display = 'flex';
   document.body.style.overflow = 'hidden';
+}
+
+// Helper function to generate Google Maps link
+function getGoogleMapsLink(place) {
+  let mapsUrl;
+  
+  if (place.maps) {
+    // Use existing maps URL
+    mapsUrl = place.maps;
+  } else if (place.googleMapsUrl) {
+    // Use Google Places URL from sync
+    mapsUrl = place.googleMapsUrl;
+  } else if (place.lat && place.lng) {
+    // Generate from coordinates
+    mapsUrl = `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
+  } else {
+    // Generate from name search
+    const searchQuery = encodeURIComponent(`${place.name}, Ubud, Bali`);
+    mapsUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}`;
+  }
+  
+  return `
+    <a href="${mapsUrl}" target="_blank" rel="noopener" class="maps-link" style="width: 100%; justify-content: center; padding: 12px; font-size: 1rem;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="1 6 1 22 8 18 16 22 21 18 21 2 16 6 8 2 1 6"></polygon>
+      </svg>
+      Open in Google Maps
+    </a>
+  `;
+}
+
+// Helper function to generate Google Maps link for cards
+function getCardMapsLink(place) {
+  let mapsUrl;
+  
+  if (place.maps) {
+    mapsUrl = place.maps;
+  } else if (place.googleMapsUrl) {
+    mapsUrl = place.googleMapsUrl;
+  } else if (place.lat && place.lng) {
+    mapsUrl = `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
+  } else {
+    const searchQuery = encodeURIComponent(`${place.name}, Ubud, Bali`);
+    mapsUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}`;
+  }
+  
+  return `
+    <a href="${mapsUrl}" target="_blank" rel="noopener" class="maps-link" onclick="event.stopPropagation()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="1 6 1 22 8 18 16 22 21 18 21 2 16 6 8 2 1 6"></polygon>
+      </svg>
+      Directions
+    </a>
+  `;
 }
 
 // Update modal favorite button
