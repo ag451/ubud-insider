@@ -402,11 +402,13 @@ function renderPlaces() {
   container.innerHTML = filtered.map((place, index) => {
     const category = UBUD_DATA.categories.find(c => c.id === place.category);
     const isFav = favorites.includes(place.id);
+    const hasNotes = place.description && place.description.length > 10;
     
     return `
       <article class="place-card" style="animation-delay: ${index * 0.05}s" onclick="openPlaceModal(${place.id})">
         <div class="place-header">
           <h3 class="place-name">${escapeHtml(place.name)}</h3>
+          ${hasNotes ? `<div class="user-avatar" title="Abrar's notes">A</div>` : ''}
         </div>
         
         <button class="fav-btn ${isFav ? 'active' : ''}" 
