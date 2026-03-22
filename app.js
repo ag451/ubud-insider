@@ -928,7 +928,7 @@ function openPlaceModal(placeId) {
         <span class="category-tag">${category?.name || place.category}</span>
         ${place.area ? `<span class="area-tag">📍 ${escapeHtml(place.area)}</span>` : ''}
         <button class="fav-btn ${isFav ? 'active' : ''}" onclick="toggleFavorite(${place.id}); updateModalFav(${place.id})" style="position: static; margin-left: auto;">
-          ${isFav ? '⭐ Saved' : '☆ Save'}
+          ${isFav ? '⭐' : '☆'}
         </button>
       </div>
     </div>
