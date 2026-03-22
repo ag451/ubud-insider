@@ -95,14 +95,149 @@ function setupEventListeners() {
     });
   });
   
-  // Location input enter key
+  // Location input with autocomplete
   const locationInput = document.getElementById('locationInput');
+  const autocompleteDropdown = document.getElementById('locationAutocomplete');
+  let autocompleteTimeout = null;
+  let selectedAutocompleteIndex = -1;
+  let currentAutocompleteResults = [];
+  
   if (locationInput) {
-    locationInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        setUserLocation();
+    // Input event for autocomplete with debounce
+    locationInput.addEventListener('input', (e) => {
+      const value = e.target.value.trim();
+      
+      // Clear previous timeout
+      if (autocompleteTimeout) {
+        clearTimeout(autocompleteTimeout);
+      }
+      
+      // Hide dropdown if input is empty
+      if (value.length < 2) {
+        hideAutocomplete();
+        return;
+      }
+      
+      // Debounce API call (300ms)
+      autocompleteTimeout = setTimeout(() => {
+        fetchAutocompleteResults(value);
+      }, 300);
+    });
+    
+    // Keyboard navigation
+    locationInput.addEventListener('keydown', (e) => {
+      if (currentAutocompleteResults.length === 0) return;
+      
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          selectedAutocompleteIndex = Math.min(selectedAutocompleteIndex + 1, currentAutocompleteResults.length - 1);
+          renderAutocompleteSelection();
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          selectedAutocompleteIndex = Math.max(selectedAutocompleteIndex - 1, -1);
+          renderAutocompleteSelection();
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (selectedAutocompleteIndex >= 0) {
+            selectAutocompleteResult(currentAutocompleteResults[selectedAutocompleteIndex]);
+          } else {
+            setUserLocation();
+          }
+          break;
+        case 'Escape':
+          hideAutocomplete();
+          break;
       }
     });
+    
+    // Hide dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.location-section')) {
+        hideAutocomplete();
+      }
+    });
+  }
+  
+  async function fetchAutocompleteResults(query) {
+    try {
+      const searchQuery = encodeURIComponent(`${query}, Ubud, Bali, Indonesia`);
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${searchQuery}&limit=5`);
+      const data = await response.json();
+      
+      if (data && data.length > 0) {
+        currentAutocompleteResults = data;
+        selectedAutocompleteIndex = -1;
+        renderAutocompleteDropdown(data);
+      } else {
+        hideAutocomplete();
+      }
+    } catch (err) {
+      console.error('Autocomplete error:', err);
+      hideAutocomplete();
+    }
+  }
+  
+  function renderAutocompleteDropdown(results) {
+    autocompleteDropdown.innerHTML = results.map((result, index) => {
+      const shortName = result.display_name.split(',')[0];
+      const subText = result.display_name.split(',').slice(1, 3).join(', ');
+      
+      return `
+        <div class="location-autocomplete-item" data-index="${index}" onclick="selectAutocompleteResultByIndex(${index})">
+          <span class="location-autocomplete-icon">📍</span>
+          <div style="flex: 1; min-width: 0;">
+            <div class="location-autocomplete-text">${escapeHtml(shortName)}</div>
+            <div class="location-autocomplete-subtext">${escapeHtml(subText)}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+    autocompleteDropdown.style.display = 'block';
+  }
+  
+  function renderAutocompleteSelection() {
+    const items = autocompleteDropdown.querySelectorAll('.location-autocomplete-item');
+    items.forEach((item, index) => {
+      item.classList.toggle('selected', index === selectedAutocompleteIndex);
+    });
+  }
+  
+  globalThis.selectAutocompleteResultByIndex = function(index) {
+    selectAutocompleteResult(currentAutocompleteResults[index]);
+  };
+  
+  function selectAutocompleteResult(result) {
+    const shortName = result.display_name.split(',')[0];
+    locationInput.value = shortName;
+    
+    userLocation = {
+      lat: parseFloat(result.lat),
+      lng: parseFloat(result.lon),
+      address: shortName
+    };
+    
+    localStorage.setItem('ubud_user_location', JSON.stringify(userLocation));
+    
+    updateLocationUI();
+    showLocationStatus(`📍 ${userLocation.address} — Places sorted by distance`, 'success');
+    
+    renderPlaces();
+    
+    if (map && window.mapProvider === 'leaflet') {
+      map.setView([userLocation.lat, userLocation.lng], 15);
+    }
+    
+    hideAutocomplete();
+  }
+  
+  function hideAutocomplete() {
+    autocompleteDropdown.style.display = 'none';
+    currentAutocompleteResults = [];
+    selectedAutocompleteIndex = -1;
   }
   
   // Load saved location from localStorage
@@ -113,7 +248,7 @@ function setupEventListeners() {
   }
 }
 
-// Set user location from address input
+// Set user location from address input (manual fallback)
 async function setUserLocation() {
   const input = document.getElementById('locationInput');
   const status = document.getElementById('locationStatus');
@@ -129,7 +264,6 @@ async function setUserLocation() {
   btn.textContent = '📍 Geocoding...';
   
   try {
-    // Use OpenStreetMap Nominatim for geocoding (free, no API key)
     const query = encodeURIComponent(`${address}, Ubud, Bali, Indonesia`);
     const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`);
     const data = await response.json();
@@ -138,19 +272,16 @@ async function setUserLocation() {
       userLocation = {
         lat: parseFloat(data[0].lat),
         lng: parseFloat(data[0].lon),
-        address: data[0].display_name.split(',')[0] // Short name
+        address: data[0].display_name.split(',')[0]
       };
       
-      // Save to localStorage
       localStorage.setItem('ubud_user_location', JSON.stringify(userLocation));
       
       updateLocationUI();
       showLocationStatus(`📍 ${userLocation.address} — Places sorted by distance`, 'success');
       
-      // Re-render places sorted by distance
       renderPlaces();
       
-      // If map is open, re-center it
       if (map && window.mapProvider === 'leaflet') {
         map.setView([userLocation.lat, userLocation.lng], 15);
       }

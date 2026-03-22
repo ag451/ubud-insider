@@ -1056,3 +1056,68 @@ body {
 .place-description {
     display: none;
 }
+
+/* Location Autocomplete Dropdown */
+.location-autocomplete {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    max-height: 250px;
+    overflow-y: auto;
+    z-index: 200;
+    box-shadow: var(--shadow-lg);
+    margin-top: -4px;
+    padding-top: 4px;
+}
+
+.location-autocomplete-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-subtle);
+    transition: background 0.15s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.location-autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.location-autocomplete-item:hover,
+.location-autocomplete-item.selected {
+    background: var(--bg-hover);
+}
+
+.location-autocomplete-item.selected {
+    border-left: 3px solid var(--accent);
+    padding-left: 13px;
+}
+
+.location-autocomplete-icon {
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.location-autocomplete-text {
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.location-autocomplete-subtext {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    margin-top: 2px;
+}
+
+.location-container {
+    position: relative;
+}
