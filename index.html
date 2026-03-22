@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Ubud Insider | Local Recommendations</title>
-    <link rel="stylesheet" href="styles.css?v=20">
+    <link rel="stylesheet" href="styles.css?v=22">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Leaflet CSS (fallback map) -->
@@ -133,23 +133,24 @@
         <!-- Footer -->
         <footer class="footer">
             <p>Made with <span class="footer-heart">❤️</span> in Ubud</p>
-            <p class="version">v1.0.1</p>
+            <p class="version">v1.0.2</p>
         </footer>
     </div>
 
     <!-- Map View - Mobile Only Full Screen -->
     <div class="map-container mobile-only" id="mapContainer">
-        <button class="map-close-btn" onclick="switchView('list')">✕</button>
-        <div class="map-controls">
+        <div class="map-mobile-header">
+            <button class="map-close-btn" onclick="switchView('list')">✕</button>
             <div class="map-category-scroll" id="mapCategoryList">
                 <button class="map-category-btn active" data-category="all" onclick="selectCategory('all')">All</button>
             </div>
-            <div class="search-container" style="max-width: 400px;">
-                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            
+            <div class="map-search-box">
+                <svg class="map-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="11" cy="11" r="8"></circle>
                     <path d="m21 21-4.35-4.35"></path>
                 </svg>
-                <input type="text" id="mapSearchInput" class="search-input" placeholder="Search on map...">
+                <input type="text" id="mapSearchInput" class="map-search-input" placeholder="Search on map...">
             </div>
         </div>
         <div id="map"></div>
