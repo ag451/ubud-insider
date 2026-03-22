@@ -6,506 +6,497 @@ let favorites = JSON.parse(localStorage.getItem('ubud_favorites') || '[]');
 let map = null;
 let markers = [];
 
-const API_BASE = '';
+const API_BASE = '/api';
 
-// Load saved places from localStorage (if user has made modifications)
-function loadSavedPlaces() {
-    const savedPlaces = localStorage.getItem('ubud_places_data');
-    if (savedPlaces) {
-        try {
-            const parsed = JSON.parse(savedPlaces);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-                // Replace the places array with saved data
-                UBUD_DATA.places = parsed;
-                console.log(`✅ Loaded ${parsed.length} saved places from localStorage`);
-                return true;
-            }
-        } catch (e) {
-            console.error('Error loading saved places:', e);
-        }
+// Load places from database
+async function loadPlacesFromDB() {
+  try {
+    const response = await fetch(`${API_BASE}/places`);
+    if (!response.ok) throw new Error('Failed to fetch places');
+    
+    const places = await response.json();
+    if (places.length > 0) {
+      UBUD_DATA.places = places;
+      console.log(`✅ Loaded ${places.length} places from database`);
+    } else {
+      // Database empty, import from data.js
+      console.log('📥 Database empty, importing initial data...');
+      await importInitialData();
     }
+    return true;
+  } catch (err) {
+    console.error('Error loading places from DB:', err);
+    // Fallback to data.js if API fails
+    console.log('⚠️ Using local data as fallback');
     return false;
+  }
+}
+
+// Import initial data from data.js to database
+async function importInitialData() {
+  try {
+    const response = await fetch(`${API_BASE}/places/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ places: UBUD_DATA.places })
+    });
+    
+    if (response.ok) {
+      console.log('✅ Initial data imported to database');
+    }
+  } catch (err) {
+    console.error('Error importing initial data:', err);
+  }
 }
 
 // Initialize app
-document.addEventListener('DOMContentLoaded', () => {
-    loadSavedPlaces();
-    renderCategories();
-    renderPlaces();
-    updateFavCount();
-    setupEventListeners();
-    initMap();
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadPlacesFromDB();
+  renderCategories();
+  renderPlaces();
+  updateFavCount();
+  setupEventListeners();
+  initMap();
 });
 
 // Setup event listeners
 function setupEventListeners() {
-    // Search input
-    const searchInput = document.getElementById('searchInput');
-    const clearBtn = document.getElementById('clearSearch');
-    
-    searchInput.addEventListener('input', (e) => {
-        searchTerm = e.target.value.toLowerCase();
-        clearBtn.style.display = searchTerm ? 'flex' : 'none';
-        if (currentView === 'list') {
-            renderPlaces();
-        } else {
-            updateMapMarkers();
-        }
+  // Search input
+  const searchInput = document.getElementById('searchInput');
+  const clearBtn = document.getElementById('clearSearch');
+  
+  searchInput.addEventListener('input', (e) => {
+    searchTerm = e.target.value.toLowerCase();
+    clearBtn.style.display = searchTerm ? 'flex' : 'none';
+    if (currentView === 'list') {
+      renderPlaces();
+    } else {
+      updateMapMarkers();
+    }
+  });
+  
+  clearBtn.addEventListener('click', () => {
+    searchInput.value = '';
+    searchTerm = '';
+    clearBtn.style.display = 'none';
+    if (currentView === 'list') {
+      renderPlaces();
+    } else {
+      updateMapMarkers();
+    }
+  });
+  
+  // View toggle
+  document.querySelectorAll('.view-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const view = btn.dataset.view;
+      switchView(view);
     });
-    
-    clearBtn.addEventListener('click', () => {
-        searchInput.value = '';
-        searchTerm = '';
-        clearBtn.style.display = 'none';
-        if (currentView === 'list') {
-            renderPlaces();
-        } else {
-            updateMapMarkers();
-        }
-    });
-    
-    // View toggle
-    document.querySelectorAll('.view-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const view = btn.dataset.view;
-            switchView(view);
-        });
-    });
+  });
 }
 
 // Switch between list and map view
 function switchView(view) {
-    currentView = view;
-    
-    // Update button states
-    document.querySelectorAll('.view-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.view === view);
-    });
-    
-    // Show/hide containers
-    const mapContainer = document.getElementById('mapContainer');
-    const placesList = document.getElementById('placesList');
-    const searchSection = document.querySelector('.search-section');
-    const categorySection = document.querySelector('.category-section');
-    const statsBar = document.querySelector('.stats-bar');
-    
-    if (view === 'map') {
-        // Hide list elements
-        placesList.style.display = 'none';
-        searchSection.style.display = 'none';
-        categorySection.style.display = 'none';
-        statsBar.style.display = 'none';
-        
-        // Show map
-        mapContainer.classList.add('active');
-        
-        // Render map categories
-        renderMapCategories();
-        
-        // Update map
-        setTimeout(() => {
-            if (map) map.invalidateSize();
-            updateMapMarkers();
-        }, 100);
-    } else {
-        // Show list elements
-        placesList.style.display = 'flex';
-        searchSection.style.display = 'block';
-        categorySection.style.display = 'block';
-        statsBar.style.display = 'flex';
-        
-        // Hide map
-        mapContainer.classList.remove('active');
-        
-        renderPlaces();
-    }
+  currentView = view;
+  
+  // Update button states
+  document.querySelectorAll('.view-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.view === view);
+  });
+  
+  // Show/hide containers
+  const mapContainer = document.getElementById('mapContainer');
+  const placesList = document.getElementById('placesList');
+  const searchSection = document.querySelector('.search-section');
+  const categorySection = document.querySelector('.category-section');
+  const statsBar = document.querySelector('.stats-bar');
+  
+  if (view === 'map') {
+    placesList.style.display = 'none';
+    searchSection.style.display = 'none';
+    categorySection.style.display = 'none';
+    statsBar.style.display = 'none';
+    mapContainer.classList.add('active');
+    renderMapCategories();
+    setTimeout(() => {
+      if (map) map.invalidateSize();
+      updateMapMarkers();
+    }, 100);
+  } else {
+    placesList.style.display = 'flex';
+    searchSection.style.display = 'block';
+    categorySection.style.display = 'block';
+    statsBar.style.display = 'flex';
+    mapContainer.classList.remove('active');
+    renderPlaces();
+  }
 }
 
 // Initialize map
 function initMap() {
-    const mapCenter = UBUD_DATA.mapCenter;
-    
-    map = L.map('map').setView([mapCenter.lat, mapCenter.lng], 15);
-    
-    // Add dark theme tiles
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-        subdomains: 'abcd',
-        maxZoom: 19
-    }).addTo(map);
-    
-    updateMapMarkers();
+  const mapCenter = UBUD_DATA.mapCenter;
+  
+  map = L.map('map').setView([mapCenter.lat, mapCenter.lng], 15);
+  
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    subdomains: 'abcd',
+    maxZoom: 19
+  }).addTo(map);
+  
+  updateMapMarkers();
 }
 
 // Update map markers
 function updateMapMarkers() {
-    // Clear existing markers
-    markers.forEach(marker => map.removeLayer(marker));
-    markers = [];
+  markers.forEach(marker => map.removeLayer(marker));
+  markers = [];
+  
+  const filtered = getFilteredPlaces();
+  
+  filtered.forEach(place => {
+    if (!place.lat || !place.lng) return;
     
-    const filtered = getFilteredPlaces();
+    const category = UBUD_DATA.categories.find(c => c.id === place.category);
+    const icon = category ? category.icon : '📍';
     
-    filtered.forEach(place => {
-        if (!place.lat || !place.lng) return;
-        
-        const category = UBUD_DATA.categories.find(c => c.id === place.category);
-        const icon = category ? category.icon : '📍';
-        
-        const marker = L.marker([place.lat, place.lng])
-            .addTo(map)
-            .bindPopup(`
-                <div style="font-family: Inter, sans-serif; min-width: 200px;">
-                    <div style="font-weight: 600; font-size: 1rem; margin-bottom: 4px;">${icon} ${escapeHtml(place.name)}</div>
-                    <div style="color: #888; font-size: 0.85rem; margin-bottom: 8px;">${escapeHtml(place.description.substring(0, 60))}...</div>
-                    <button onclick="openPlaceModal(${place.id})" style="background: #22c55e; color: #000; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">View Details</button>
-                </div>
-            `);
-        
-        markers.push(marker);
-    });
+    const marker = L.marker([place.lat, place.lng])
+      .addTo(map)
+      .bindPopup(`
+        <div style="font-family: Inter, sans-serif; min-width: 200px;">
+          <div style="font-weight: 600; font-size: 1rem; margin-bottom: 4px;">${icon} ${escapeHtml(place.name)}</div>
+          <div style="color: #888; font-size: 0.85rem; margin-bottom: 8px;">${escapeHtml(place.description.substring(0, 60))}...</div>
+          <button onclick="openPlaceModal(${place.id})" style="background: #22c55e; color: #000; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">View Details</button>
+        </div>
+      `);
     
-    // Fit bounds if we have markers
-    if (markers.length > 0) {
-        const group = new L.featureGroup(markers);
-        map.fitBounds(group.getBounds().pad(0.1));
-    }
+    markers.push(marker);
+  });
+  
+  if (markers.length > 0) {
+    const group = new L.featureGroup(markers);
+    map.fitBounds(group.getBounds().pad(0.1));
+  }
 }
 
 // Render category buttons
 function renderCategories() {
-    const container = document.getElementById('categoryList');
-    
-    UBUD_DATA.categories.forEach(cat => {
-        const btn = document.createElement('button');
-        btn.className = 'category-btn';
-        btn.dataset.category = cat.id;
-        btn.innerHTML = `
-            <span class="category-icon">${cat.icon}</span>
-            <span class="category-name">${cat.name}</span>
-        `;
-        btn.addEventListener('click', () => selectCategory(cat.id));
-        container.appendChild(btn);
-    });
+  const container = document.getElementById('categoryList');
+  
+  UBUD_DATA.categories.forEach(cat => {
+    const btn = document.createElement('button');
+    btn.className = 'category-btn';
+    btn.dataset.category = cat.id;
+    btn.innerHTML = `
+      <span class="category-icon">${cat.icon}</span>
+      <span class="category-name">${cat.name}</span>
+    `;
+    btn.addEventListener('click', () => selectCategory(cat.id));
+    container.appendChild(btn);
+  });
 }
 
 // Select category
 function selectCategory(category) {
-    currentCategory = category;
-    
-    // Update button states in list view
-    document.querySelectorAll('.category-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.category === category);
-    });
-    
-    // Update button states in map view if exists
-    document.querySelectorAll('.map-category-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.category === category);
-    });
-    
-    if (currentView === 'list') {
-        renderPlaces();
-    } else {
-        updateMapMarkers();
-    }
+  currentCategory = category;
+  
+  document.querySelectorAll('.category-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.category === category);
+  });
+  
+  document.querySelectorAll('.map-category-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.category === category);
+  });
+  
+  if (currentView === 'list') {
+    renderPlaces();
+  } else {
+    updateMapMarkers();
+  }
 }
 
 // Render map category buttons
 function renderMapCategories() {
-    const container = document.getElementById('mapCategoryList');
-    if (!container || container.children.length > 1) return; // Already rendered
-    
-    // Clear existing except "All"
-    container.innerHTML = '<button class="map-category-btn active" data-category="all" onclick="selectCategory(\'all\')">All</button>';
-    
-    UBUD_DATA.categories.forEach(cat => {
-        const btn = document.createElement('button');
-        btn.className = 'map-category-btn';
-        btn.dataset.category = cat.id;
-        btn.textContent = `${cat.icon} ${cat.name}`;
-        btn.onclick = () => selectCategory(cat.id);
-        container.appendChild(btn);
+  const container = document.getElementById('mapCategoryList');
+  if (!container || container.children.length > 1) return;
+  
+  container.innerHTML = '<button class="map-category-btn active" data-category="all" onclick="selectCategory(\'all\')">All</button>';
+  
+  UBUD_DATA.categories.forEach(cat => {
+    const btn = document.createElement('button');
+    btn.className = 'map-category-btn';
+    btn.dataset.category = cat.id;
+    btn.textContent = `${cat.icon} ${cat.name}`;
+    btn.onclick = () => selectCategory(cat.id);
+    container.appendChild(btn);
+  });
+  
+  const mapSearchInput = document.getElementById('mapSearchInput');
+  if (mapSearchInput) {
+    mapSearchInput.addEventListener('input', (e) => {
+      searchTerm = e.target.value.toLowerCase();
+      updateMapMarkers();
     });
-    
-    // Setup map search
-    const mapSearchInput = document.getElementById('mapSearchInput');
-    if (mapSearchInput) {
-        mapSearchInput.addEventListener('input', (e) => {
-            searchTerm = e.target.value.toLowerCase();
-            updateMapMarkers();
-        });
-    }
+  }
 }
 
 // Get filtered places
 function getFilteredPlaces() {
-    return UBUD_DATA.places.filter(place => {
-        if (currentCategory !== 'all' && place.category !== currentCategory) {
-            return false;
-        }
-        
-        if (searchTerm) {
-            const searchFields = [
-                place.name,
-                place.description,
-                place.area,
-                UBUD_DATA.categories.find(c => c.id === place.category)?.name || ''
-            ].join(' ').toLowerCase();
-            
-            return searchFields.includes(searchTerm);
-        }
-        
-        return true;
-    });
+  return UBUD_DATA.places.filter(place => {
+    if (currentCategory !== 'all' && place.category !== currentCategory) {
+      return false;
+    }
+    
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = 
+        place.name.toLowerCase().includes(searchLower) ||
+        place.description.toLowerCase().includes(searchLower) ||
+        (place.area && place.area.toLowerCase().includes(searchLower));
+      
+      if (!matchesSearch) return false;
+    }
+    
+    return true;
+  });
 }
 
 // Render places list
 function renderPlaces() {
-    const container = document.getElementById('placesList');
-    const emptyState = document.getElementById('emptyState');
-    const statsText = document.getElementById('statsText');
+  const container = document.getElementById('placesList');
+  const emptyState = document.getElementById('emptyState');
+  const statsText = document.getElementById('statsText');
+  
+  const filtered = getFilteredPlaces();
+  
+  const categoryName = currentCategory === 'all' 
+    ? 'all places' 
+    : UBUD_DATA.categories.find(c => c.id === currentCategory)?.name.toLowerCase();
+  statsText.textContent = `Showing ${filtered.length} ${categoryName}`;
+  
+  if (filtered.length === 0) {
+    container.style.display = 'none';
+    emptyState.style.display = 'block';
+    return;
+  }
+  
+  container.style.display = 'flex';
+  emptyState.style.display = 'none';
+  
+  container.innerHTML = filtered.map((place, index) => {
+    const category = UBUD_DATA.categories.find(c => c.id === place.category);
+    const isFav = favorites.includes(place.id);
     
-    const filtered = getFilteredPlaces();
-    
-    const categoryName = currentCategory === 'all' 
-        ? 'all places' 
-        : UBUD_DATA.categories.find(c => c.id === currentCategory)?.name.toLowerCase();
-    statsText.textContent = `Showing ${filtered.length} ${categoryName}`;
-    
-    if (filtered.length === 0) {
-        container.style.display = 'none';
-        emptyState.style.display = 'block';
-        return;
-    }
-    
-    container.style.display = 'flex';
-    emptyState.style.display = 'none';
-    
-    container.innerHTML = filtered.map((place, index) => {
-        const category = UBUD_DATA.categories.find(c => c.id === place.category);
-        const isFav = favorites.includes(place.id);
+    return `
+      <article class="place-card" style="animation-delay: ${index * 0.05}s" onclick="openPlaceModal(${place.id})">
+        <div class="place-header">
+          <h3 class="place-name">${escapeHtml(place.name)}</h3>
+        </div>
         
-        return `
-            <article class="place-card" style="animation-delay: ${index * 0.05}s" onclick="openPlaceModal(${place.id})">
-                <div class="place-header">
-                    <h3 class="place-name">${escapeHtml(place.name)}</h3>
-                </div>
-                
-                <button class="fav-btn ${isFav ? 'active' : ''}" 
-                        onclick="event.stopPropagation(); toggleFavorite(${place.id})"
-                        aria-label="${isFav ? 'Remove from favorites' : 'Add to favorites'}">
-                    ${isFav ? '⭐' : '☆'}
-                </button>
-                
-                <div class="place-meta">
-                    <span class="category-tag">${category?.icon || ''} ${category?.name || place.category}</span>
-                    ${place.area ? `<span class="area-tag">📍 ${escapeHtml(place.area)}</span>` : ''}
-                    ${place.rating ? `<span class="place-rating"><span class="star">★</span> ${place.rating}</span>` : ''}
-                </div>
-                
-                <p class="place-description">${escapeHtml(place.description)}</p>
-                
-                <div class="card-actions">
-                    ${place.maps ? `
-                        <a href="${place.maps}" target="_blank" rel="noopener" class="maps-link" onclick="event.stopPropagation()">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polygon points="1 6 1 22 8 18 16 22 21 18 21 2 16 6 8 2 1 6"></polygon>
-                            </svg>
-                            Directions
-                        </a>
-                    ` : ''}
-                    <button class="details-btn" onclick="event.stopPropagation(); openPlaceModal(${place.id})">
-                        Details →
-                    </button>
-                </div>
-            </article>
-        `;
-    }).join('');
+        <button class="fav-btn ${isFav ? 'active' : ''}" 
+                onclick="event.stopPropagation(); toggleFavorite(${place.id})"
+                aria-label="${isFav ? 'Remove from favorites' : 'Add to favorites'}">
+          ${isFav ? '⭐' : '☆'}
+        </button>
+        
+        <div class="place-meta">
+          <span class="category-tag">${category?.icon || ''} ${category?.name || place.category}</span>
+          ${place.area ? `<span class="area-tag">📍 ${escapeHtml(place.area)}</span>` : ''}
+          ${place.rating ? `<span class="place-rating"><span class="star">★</span> ${place.rating}</span>` : ''}
+        </div>
+        
+        <p class="place-description">${escapeHtml(place.description)}</p>
+        
+        <div class="card-actions">
+          ${place.maps ? `
+            <a href="${place.maps}" target="_blank" rel="noopener" class="maps-link" onclick="event.stopPropagation()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="1 6 1 22 8 18 16 22 21 18 21 2 16 6 8 2 1 6"></polygon>
+              </svg>
+              Directions
+            </a>
+          ` : ''}
+          <button class="details-btn" onclick="event.stopPropagation(); openPlaceModal(${place.id})">
+            Details →
+          </button>
+        </div>
+      </article>
+    `;
+  }).join('');
 }
 
 // Open place detail modal
 function openPlaceModal(placeId) {
-    const place = UBUD_DATA.places.find(p => p.id === placeId);
-    if (!place) return;
+  const place = UBUD_DATA.places.find(p => p.id === placeId);
+  if (!place) return;
+  
+  const category = UBUD_DATA.categories.find(c => c.id === place.category);
+  const isFav = favorites.includes(place.id);
+  
+  const modalBody = document.getElementById('modalBody');
+  modalBody.innerHTML = `
+    <div class="modal-header">
+      <h2 class="modal-title">${category?.icon || ''} ${escapeHtml(place.name)}</h2>
+      <div class="modal-meta">
+        <span class="category-tag">${category?.name || place.category}</span>
+        ${place.area ? `<span class="area-tag">📍 ${escapeHtml(place.area)}</span>` : ''}
+        <button class="fav-btn ${isFav ? 'active' : ''}" onclick="toggleFavorite(${place.id}); updateModalFav(${place.id})" style="position: static; margin-left: auto;">
+          ${isFav ? '⭐ Saved' : '☆ Save'}
+        </button>
+      </div>
+    </div>
     
-    const category = UBUD_DATA.categories.find(c => c.id === place.category);
-    const isFav = favorites.includes(place.id);
+    <div class="modal-section">
+      <div class="modal-section-title">About</div>
+      <p class="modal-text">${escapeHtml(place.description)}</p>
+    </div>
     
-    const modalBody = document.getElementById('modalBody');
-    modalBody.innerHTML = `
-        <div class="modal-header">
-            <h2 class="modal-title">${category?.icon || ''} ${escapeHtml(place.name)}</h2>
-            <div class="modal-meta">
-                <span class="category-tag">${category?.name || place.category}</span>
-                ${place.area ? `<span class="area-tag">📍 ${escapeHtml(place.area)}</span>` : ''}
-                <button class="fav-btn ${isFav ? 'active' : ''}" onclick="toggleFavorite(${place.id}); updateModalFav(${place.id})" style="position: static; margin-left: auto;">
-                    ${isFav ? '⭐ Saved' : '☆ Save'}
-                </button>
-            </div>
-        </div>
-        
-        <div class="modal-section">
-            <div class="modal-section-title">About</div>
-            <p class="modal-text">${escapeHtml(place.description)}</p>
-        </div>
-        
-        ${place.rating ? `
-            <div class="modal-section">
-                <div class="modal-section-title">Rating</div>
-                <div class="rating-stars">${'★'.repeat(Math.floor(place.rating))}${'☆'.repeat(5 - Math.floor(place.rating))} ${place.rating}/5</div>
-            </div>
-        ` : ''}
-        
-        ${place.address ? `
-            <div class="modal-section">
-                <div class="modal-section-title">Address</div>
-                <p class="modal-text">${escapeHtml(place.address)}</p>
-            </div>
-        ` : ''}
-        
-        ${place.phone ? `
-            <div class="modal-section">
-                <div class="modal-section-title">Phone</div>
-                <p class="modal-text">${escapeHtml(place.phone)}</p>
-            </div>
-        ` : ''}
-        
-        ${place.hours ? `
-            <div class="modal-section">
-                <div class="modal-section-title">Hours</div>
-                <p class="modal-text">${escapeHtml(place.hours)}</p>
-            </div>
-        ` : ''}
-        
-        ${place.reviews && place.reviews.length > 0 ? `
-            <div class="modal-section">
-                <div class="modal-section-title">Reviews</div>
-                ${place.reviews.map(r => `
-                    <div class="review-item">
-                        <div class="review-header">
-                            <span class="review-author">${escapeHtml(r.author)}</span>
-                            <span class="review-rating">${'★'.repeat(r.rating)}</span>
-                        </div>
-                        <p class="review-text">${escapeHtml(r.text)}</p>
-                    </div>
-                `).join('')}
-            </div>
-        ` : ''}
-        
-        <div class="modal-section" style="margin-top: 24px;">
-            ${place.maps ? `
-                <a href="${place.maps}" target="_blank" rel="noopener" class="maps-link" style="width: 100%; justify-content: center; padding: 12px; font-size: 1rem;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polygon points="1 6 1 22 8 18 16 22 21 18 21 2 16 6 8 2 1 6"></polygon>
-                    </svg>
-                    Open in Google Maps
-                </a>
-            ` : ''}
-        </div>
-        
-        ${!place.address ? `
-            <div class="modal-section" style="margin-top: 16px; padding: 12px; background: var(--bg-secondary); border-radius: var(--radius-sm);">
-                <p class="modal-text" style="font-size: 0.8rem; color: var(--text-tertiary); text-align: center;">
-                    💡 More details available with <a href="https://developers.google.com/maps/documentation/places/web-service/get-api-key" target="_blank" style="color: var(--accent-light);">Google Places API</a>
-                </p>
-            </div>
-        ` : ''}
-    `;
+    ${place.rating ? `
+      <div class="modal-section">
+        <div class="modal-section-title">Rating</div>
+        <div class="rating-stars">${'★'.repeat(Math.floor(place.rating))}${'☆'.repeat(5 - Math.floor(place.rating))} ${place.rating}/5</div>
+      </div>
+    ` : ''}
     
-    document.getElementById('placeModal').style.display = 'flex';
-    document.body.style.overflow = 'hidden';
+    ${place.address ? `
+      <div class="modal-section">
+        <div class="modal-section-title">Address</div>
+        <p class="modal-text">${escapeHtml(place.address)}</p>
+      </div>
+    ` : ''}
+    
+    ${place.phone ? `
+      <div class="modal-section">
+        <div class="modal-section-title">Phone</div>
+        <p class="modal-text">${escapeHtml(place.phone)}</p>
+      </div>
+    ` : ''}
+    
+    ${place.hours ? `
+      <div class="modal-section">
+        <div class="modal-section-title">Hours</div>
+        <p class="modal-text">${escapeHtml(place.hours)}</p>
+      </div>
+    ` : ''}
+    
+    ${place.reviews && place.reviews.length > 0 ? `
+      <div class="modal-section">
+        <div class="modal-section-title">Reviews</div>
+        ${place.reviews.map(r => `
+          <div class="review-item">
+            <div class="review-header">
+              <span class="review-author">${escapeHtml(r.author)}</span>
+              <span class="review-rating">${'★'.repeat(r.rating)}</span>
+            </div>
+            <p class="review-text">${escapeHtml(r.text)}</p>
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
+    
+    <div class="modal-section" style="margin-top: 24px;">
+      ${place.maps ? `
+        <a href="${place.maps}" target="_blank" rel="noopener" class="maps-link" style="width: 100%; justify-content: center; padding: 12px; font-size: 1rem;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="1 6 1 22 8 18 16 22 21 18 21 2 16 6 8 2 1 6"></polygon>
+          </svg>
+          Open in Google Maps
+        </a>
+      ` : ''}
+    </div>
+  `;
+  
+  document.getElementById('placeModal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
 }
 
 // Update modal favorite button
 function updateModalFav(placeId) {
-    setTimeout(() => openPlaceModal(placeId), 50);
+  setTimeout(() => openPlaceModal(placeId), 50);
 }
 
 // Close modal
 function closeModal() {
-    document.getElementById('placeModal').style.display = 'none';
-    document.body.style.overflow = '';
+  document.getElementById('placeModal').style.display = 'none';
+  document.body.style.overflow = '';
 }
 
 // Close modal on escape key
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeModal();
+  if (e.key === 'Escape') closeModal();
 });
 
 // Toggle favorite
 function toggleFavorite(placeId) {
-    const index = favorites.indexOf(placeId);
-    
-    if (index > -1) {
-        favorites.splice(index, 1);
-    } else {
-        favorites.push(placeId);
-    }
-    
-    localStorage.setItem('ubud_favorites', JSON.stringify(favorites));
-    updateFavCount();
-    
-    if (currentView === 'list') {
-        renderPlaces();
-    }
+  const index = favorites.indexOf(placeId);
+  
+  if (index > -1) {
+    favorites.splice(index, 1);
+  } else {
+    favorites.push(placeId);
+  }
+  
+  localStorage.setItem('ubud_favorites', JSON.stringify(favorites));
+  updateFavCount();
+  
+  if (currentView === 'list') {
+    renderPlaces();
+  }
 }
 
 // Update favorite count display
 function updateFavCount() {
-    const favCountEl = document.getElementById('favCount');
-    const favCountNum = document.getElementById('favCountNum');
-    
-    if (favorites.length > 0) {
-        favCountEl.style.display = 'inline';
-        favCountNum.textContent = favorites.length;
-    } else {
-        favCountEl.style.display = 'none';
-    }
+  const favCountEl = document.getElementById('favCount');
+  const favCountNum = document.getElementById('favCountNum');
+  
+  if (favorites.length > 0) {
+    favCountEl.style.display = 'inline';
+    favCountNum.textContent = favorites.length;
+  } else {
+    favCountEl.style.display = 'none';
+  }
 }
 
 // Escape HTML to prevent XSS
 function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 // Sync with Google Places API
 async function syncWithGoogle() {
-    const btn = document.getElementById('syncBtn');
-    btn.disabled = true;
-    btn.textContent = '🔄 Syncing...';
+  const btn = document.getElementById('syncBtn');
+  btn.disabled = true;
+  btn.textContent = '🔄 Syncing...';
+  
+  try {
+    console.log('🚀 Starting sync with Google Places...');
     
-    try {
-        console.log('🚀 Starting sync with Google Places...');
-        
-        // Test the API first
-        const testResponse = await fetch('/api/places/search?query=Milk%20and%20Madu%20Ubud');
-        const testData = await testResponse.json();
-        
-        if (testData.error) {
-            alert('❌ API Error: ' + testData.error + '\n\nMake sure GOOGLE_PLACES_API_KEY is set in Railway environment variables.');
-            console.error('API Error:', testData.error);
-            return;
-        }
-        
-        if (testData.status === 'REQUEST_DENIED' || testData.status === 'INVALID_REQUEST') {
-            alert('❌ Google API Error: ' + testData.status + '\n\nCheck that your API key is valid and has Places API enabled.');
-            console.error('Google API Error:', testData);
-            return;
-        }
-        
-        console.log('✅ API test passed, starting batch fetch...');
-        
-        // Run the batch fetch
-        await batchFetchAllPlaces();
-        
-        alert('✅ Sync complete! Check console for details.');
-        
-    } catch (err) {
-        console.error('Sync error:', err);
-        alert('❌ Sync failed: ' + err.message);
-    } finally {
-        btn.disabled = false;
-        btn.textContent = '🔄 Sync Places';
+    const testResponse = await fetch('/api/places/search?query=Milk%20and%20Madu%20Ubud');
+    const testData = await testResponse.json();
+    
+    if (testData.error) {
+      alert('❌ API Error: ' + testData.error + '\n\nMake sure GOOGLE_PLACES_API_KEY is set in Railway environment variables.');
+      console.error('API Error:', testData.error);
+      return;
     }
+    
+    if (testData.status === 'REQUEST_DENIED' || testData.status === 'INVALID_REQUEST') {
+      alert('❌ Google API Error: ' + testData.status + '\n\nCheck that your API key is valid and has Places API enabled.');
+      console.error('Google API Error:', testData);
+      return;
+    }
+    
+    console.log('✅ API test passed, starting batch fetch...');
+    await batchFetchAllPlaces();
+    alert('✅ Sync complete! Check console for details.');
+    
+  } catch (err) {
+    console.error('Sync error:', err);
+    alert('❌ Sync failed: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔄 Sync Places';
+  }
 }

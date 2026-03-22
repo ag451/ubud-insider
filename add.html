@@ -433,7 +433,7 @@
             }
         }
         
-        function addNewPlace() {
+        async function addNewPlace() {
             const name = document.getElementById('selectedPlaceName').value;
             const category = document.getElementById('placeCategory').value;
             const area = document.getElementById('placeArea').value;
@@ -447,12 +447,7 @@
                 return;
             }
             
-            // Generate new ID
-            const newId = Math.max(...UBUD_DATA.places.map(p => p.id)) + 1;
-            
-            // Add to data
-            UBUD_DATA.places.push({
-                id: newId,
+            const newPlace = {
                 name: name,
                 category: category,
                 description: notes,
@@ -462,25 +457,42 @@
                 lng: lng ? parseFloat(lng) : null,
                 rating: selectedPlace?.rating,
                 address: selectedPlace?.formatted_address,
-                phone: selectedPlace?.formatted_phone_number
-            });
+                phone: selectedPlace?.formatted_phone_number,
+                google_place_id: document.getElementById('selectedPlaceId').value
+            };
             
-            // Save ALL places to localStorage
-            localStorage.setItem('ubud_places_data', JSON.stringify(UBUD_DATA.places));
-            
-            showAlert('addAlert', `✅ "${name}" added successfully!`, 'success');
-            
-            // Reset form
-            document.getElementById('selectedPlaceInfo').style.display = 'none';
-            document.getElementById('googleSearch').value = '';
-            document.getElementById('placeCategory').value = '';
-            document.getElementById('placeArea').value = '';
-            document.getElementById('placeNotes').value = '';
-            document.getElementById('placeMapsUrl').value = '';
-            selectedPlace = null;
-            
-            // Refresh edit list
-            renderPlacesList();
+            try {
+                const response = await fetch('/api/places', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newPlace)
+                });
+                
+                if (!response.ok) throw new Error('Failed to add place');
+                
+                const result = await response.json();
+                
+                // Add to local array
+                UBUD_DATA.places.push({ ...newPlace, id: result.id });
+                
+                showAlert('addAlert', `✅ "${name}" added successfully!`, 'success');
+                
+                // Reset form
+                document.getElementById('selectedPlaceInfo').style.display = 'none';
+                document.getElementById('googleSearch').value = '';
+                document.getElementById('placeCategory').value = '';
+                document.getElementById('placeArea').value = '';
+                document.getElementById('placeNotes').value = '';
+                document.getElementById('placeMapsUrl').value = '';
+                selectedPlace = null;
+                
+                // Refresh edit list
+                renderPlacesList();
+                
+            } catch (err) {
+                console.error('Error adding place:', err);
+                showAlert('addAlert', '❌ Failed to add place: ' + err.message, 'error');
+            }
         }
         
         function renderPlacesList(searchTerm = '') {
@@ -558,32 +570,62 @@
             renderPlacesList(document.getElementById('editSearch').value);
         }
         
-        function saveEdit(id) {
+        async function saveEdit(id) {
             const place = UBUD_DATA.places.find(p => p.id === id);
             if (!place) return;
             
-            place.name = document.getElementById(`edit-name-${id}`).value;
-            place.category = document.getElementById(`edit-category-${id}`).value;
-            place.area = document.getElementById(`edit-area-${id}`).value;
-            place.description = document.getElementById(`edit-desc-${id}`).value;
+            const updatedPlace = {
+                ...place,
+                name: document.getElementById(`edit-name-${id}`).value,
+                category: document.getElementById(`edit-category-${id}`).value,
+                area: document.getElementById(`edit-area-${id}`).value,
+                description: document.getElementById(`edit-desc-${id}`).value
+            };
             
-            // Save ALL places to localStorage
-            localStorage.setItem('ubud_places_data', JSON.stringify(UBUD_DATA.places));
-            
-            editingPlaceId = null;
-            renderPlacesList(document.getElementById('editSearch').value);
-            showAlert('editAlert', '✅ Place updated successfully!', 'success');
+            try {
+                const response = await fetch(`/api/places/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedPlace)
+                });
+                
+                if (!response.ok) throw new Error('Failed to update place');
+                
+                // Update local array
+                Object.assign(place, updatedPlace);
+                
+                editingPlaceId = null;
+                renderPlacesList(document.getElementById('editSearch').value);
+                showAlert('editAlert', '✅ Place updated successfully!', 'success');
+                
+            } catch (err) {
+                console.error('Error updating place:', err);
+                showAlert('editAlert', '❌ Failed to update place: ' + err.message, 'error');
+            }
         }
         
-        function deletePlace(id) {
+        async function deletePlace(id) {
             if (!confirm('Are you sure you want to delete this place?')) return;
             
-            const index = UBUD_DATA.places.findIndex(p => p.id === id);
-            if (index > -1) {
-                UBUD_DATA.places.splice(index, 1);
-                localStorage.setItem('ubud_places_data', JSON.stringify(UBUD_DATA.places));
+            try {
+                const response = await fetch(`/api/places/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) throw new Error('Failed to delete place');
+                
+                // Remove from local array
+                const index = UBUD_DATA.places.findIndex(p => p.id === id);
+                if (index > -1) {
+                    UBUD_DATA.places.splice(index, 1);
+                }
+                
                 renderPlacesList(document.getElementById('editSearch').value);
                 showAlert('editAlert', '✅ Place deleted successfully!', 'success');
+                
+            } catch (err) {
+                console.error('Error deleting place:', err);
+                showAlert('editAlert', '❌ Failed to delete place: ' + err.message, 'error');
             }
         }
         
@@ -599,38 +641,43 @@
             return div.innerHTML;
         }
         
-        // Load places from localStorage on page load (overrides data.js)
-        const savedPlaces = localStorage.getItem('ubud_places_data');
-        if (savedPlaces) {
+        // Load places from database on page load
+        async function loadPlaces() {
             try {
-                const parsed = JSON.parse(savedPlaces);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                    UBUD_DATA.places = parsed;
-                    console.log(`✅ Loaded ${parsed.length} places from localStorage`);
+                const response = await fetch('/api/places');
+                if (!response.ok) throw new Error('Failed to fetch places');
+                
+                const places = await response.json();
+                if (places.length > 0) {
+                    UBUD_DATA.places = places;
+                    console.log(`✅ Loaded ${places.length} places from database`);
                 }
-            } catch (e) {
-                console.error('Error loading saved places:', e);
+                renderPlacesList();
+            } catch (err) {
+                console.error('Error loading places:', err);
+                showAlert('editAlert', '⚠️ Using local data (DB unavailable)', 'error');
+                renderPlacesList();
             }
         }
-        // Also check for legacy custom places and migrate
-        const customPlaces = localStorage.getItem('ubud_places_custom');
-        if (customPlaces && !savedPlaces) {
-            try {
-                const parsed = JSON.parse(customPlaces);
-                if (Array.isArray(parsed)) {
-                    parsed.forEach(p => {
-                        if (!UBUD_DATA.places.find(existing => existing.id === p.id)) {
-                            UBUD_DATA.places.push(p);
-                        }
-                    });
-                    // Migrate to new format
-                    localStorage.setItem('ubud_places_data', JSON.stringify(UBUD_DATA.places));
-                    localStorage.removeItem('ubud_places_custom');
-                }
-            } catch (e) {
-                console.error('Error migrating custom places:', e);
-            }
-        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            populateCategories();
+            loadPlaces();
+            
+            // Google search with debounce
+            const searchInput = document.getElementById('googleSearch');
+            let debounceTimer;
+            searchInput.addEventListener('input', (e) => {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => searchGooglePlaces(e.target.value), 500);
+            });
+            
+            // Edit search
+            document.getElementById('editSearch').addEventListener('input', (e) => {
+                renderPlacesList(e.target.value);
+            });
+        });
     </script>
 </body>
 </html>
