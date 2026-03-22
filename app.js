@@ -1237,21 +1237,25 @@ function openPlaceModal(placeId) {
 function getGoogleMapsLink(place) {
   let mapsUrl;
   
-  if (place.maps) {
-    // Use existing maps URL
-    mapsUrl = place.maps;
-  } else if (place.googleMapsUrl) {
-    // Use Google Places URL from sync
-    mapsUrl = place.googleMapsUrl;
-  } else if (place.address) {
-    // Use full address from Google Places API for most accurate results
+  // Priority 1: Full address from Google Places API (most accurate)
+  if (place.address && place.address.length > 10 && place.address.includes('Ubud')) {
     const searchQuery = encodeURIComponent(place.address);
     mapsUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}`;
-  } else if (place.lat && place.lng) {
-    // Fallback to coordinates
+  }
+  // Priority 2: Google Places URL from sync
+  else if (place.googleMapsUrl) {
+    mapsUrl = place.googleMapsUrl;
+  }
+  // Priority 3: Existing maps URL (fallback)
+  else if (place.maps) {
+    mapsUrl = place.maps;
+  }
+  // Priority 4: Coordinates
+  else if (place.lat && place.lng) {
     mapsUrl = `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
-  } else {
-    // Last resort: name search
+  }
+  // Last resort: name search
+  else {
     const searchQuery = encodeURIComponent(`${place.name}, Ubud, Bali`);
     mapsUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}`;
   }
@@ -1270,17 +1274,25 @@ function getGoogleMapsLink(place) {
 function getCardMapsLink(place) {
   let mapsUrl;
   
-  if (place.maps) {
-    mapsUrl = place.maps;
-  } else if (place.googleMapsUrl) {
-    mapsUrl = place.googleMapsUrl;
-  } else if (place.address) {
-    // Use full address from Google Places API for most accurate results
+  // Priority 1: Full address from Google Places API (most accurate)
+  if (place.address && place.address.length > 10 && place.address.includes('Ubud')) {
     const searchQuery = encodeURIComponent(place.address);
     mapsUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}`;
-  } else if (place.lat && place.lng) {
+  }
+  // Priority 2: Google Places URL from sync
+  else if (place.googleMapsUrl) {
+    mapsUrl = place.googleMapsUrl;
+  }
+  // Priority 3: Existing maps URL (fallback)
+  else if (place.maps) {
+    mapsUrl = place.maps;
+  }
+  // Priority 4: Coordinates
+  else if (place.lat && place.lng) {
     mapsUrl = `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
-  } else {
+  }
+  // Last resort: name search
+  else {
     const searchQuery = encodeURIComponent(`${place.name}, Ubud, Bali`);
     mapsUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}`;
   }
