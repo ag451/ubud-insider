@@ -541,22 +541,6 @@ body {
     padding: 4px 8px;
     background: rgba(251, 191, 36, 0.15);
     border-radius: var(--radius-full);
-    font-size: 0.6875rem;
-    color: var(--favorite);
-    font-weight: 600;
-}
-
-.place-rating .star {
-    font-size: 0.875rem;
-}
-
-.place-rating {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 8px;
-    background: rgba(251, 191, 36, 0.15);
-    border-radius: var(--radius-full);
     font-size: 0.75rem;
     color: var(--favorite);
     font-weight: 600;
@@ -1232,10 +1216,6 @@ body {
     font-size: 0.75rem;
     color: var(--text-tertiary);
     margin-top: 2px;
-}
-
-.location-container {
-    position: relative;
 }
 
 /* Vibe Filters Section */

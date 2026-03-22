@@ -2,9 +2,9 @@
 // API key can be set via GOOGLE_PLACES_CONFIG.apiKey below
 
 const GOOGLE_PLACES_CONFIG = {
-    // Google Maps API Key (for frontend map)
-    // Set your API key here (starts with AIza...):
-    apiKey: 'API_KEY',
+    // Google Maps API Key (for frontend map - NOT USED, backend proxy is used instead)
+    // Leave empty - all API calls go through backend proxy
+    apiKey: '',
     
     // Backend proxy endpoints (no API key needed in browser)
     searchEndpoint: '/api/places/search',
@@ -20,19 +20,14 @@ const GOOGLE_PLACES_CONFIG = {
 
 // Log which map provider will be used
 if (GOOGLE_PLACES_CONFIG.apiKey && GOOGLE_PLACES_CONFIG.apiKey.length > 10) {
-    console.log('✅ Google Maps API key configured');
-} else {
-    console.log('ℹ️ No Google Maps API key - will use Leaflet fallback');
+    console.log('✅ Google Places API key configured');
 }
 
 // Initialize Google Places API (now uses backend proxy)
 async function initGooglePlaces() {
     if (!GOOGLE_PLACES_CONFIG.enabled) {
-        console.log('ℹ️ Google Places API not enabled.');
         return false;
     }
-    
-    console.log('✅ Google Places API ready (via backend proxy)');
     return true;
 }
 
@@ -48,7 +43,6 @@ async function fetchPlaceDetails(placeName, location = { lat: -8.5069, lng: 115.
     if (cached) {
         const data = JSON.parse(cached);
         if (Date.now() - data.timestamp < GOOGLE_PLACES_CONFIG.cacheDuration) {
-            console.log(`📦 Using cached data for ${placeName}`);
             return data.details;
         }
     }
@@ -112,7 +106,6 @@ async function fetchPlaceDetails(placeName, location = { lat: -8.5069, lng: 115.
             timestamp: Date.now()
         }));
         
-        console.log(`✅ Fetched details for ${placeName}`);
         return result;
         
     } catch (err) {
@@ -135,11 +128,9 @@ function getPlacePhotoUrl(photoReference, maxWidth = 400) {
 // Batch fetch all places (call this to populate data)
 async function batchFetchAllPlaces() {
     if (!GOOGLE_PLACES_CONFIG.enabled) {
-        console.log('ℹ️ Google Places API not enabled. Skipping batch fetch.');
         return;
     }
     
-    console.log('🚀 Starting batch fetch of all places...');
     let updatedCount = 0;
     
     for (const place of UBUD_DATA.places) {
@@ -179,7 +170,6 @@ async function batchFetchAllPlaces() {
                     body: JSON.stringify(place)
                 });
                 if (response.ok) {
-                    console.log(`💾 Saved ${place.name} to database`);
                     updatedCount++;
                 } else {
                     const errorData = await response.json().catch(() => ({}));
@@ -190,8 +180,6 @@ async function batchFetchAllPlaces() {
             }
         }
     }
-    
-    console.log(`✅ Batch fetch complete! Updated ${updatedCount} places.`);
     
     // Refresh the UI
     if (typeof renderPlaces === 'function') {

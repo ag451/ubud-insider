@@ -20,17 +20,13 @@ async function loadPlacesFromDB() {
     const places = await response.json();
     if (places.length > 0) {
       UBUD_DATA.places = places;
-      console.log(`✅ Loaded ${places.length} places from database`);
     } else {
       // Database empty, import from data.js
-      console.log('📥 Database empty, importing initial data...');
       await importInitialData();
     }
     return true;
   } catch (err) {
     console.error('Error loading places from DB:', err);
-    // Fallback to data.js if API fails
-    console.log('⚠️ Using local data as fallback');
     return false;
   }
 }
@@ -38,15 +34,11 @@ async function loadPlacesFromDB() {
 // Import initial data from data.js to database
 async function importInitialData() {
   try {
-    const response = await fetch(`${API_BASE}/places/import`, {
+    await fetch(`${API_BASE}/places/import`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ places: UBUD_DATA.places })
     });
-    
-    if (response.ok) {
-      console.log('✅ Initial data imported to database');
-    }
   } catch (err) {
     console.error('Error importing initial data:', err);
   }
@@ -60,7 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderPlaces();
   updateFavCount();
   setupEventListeners();
-  // Map is initialized by Google Maps callback (initGoogleMap)
+  // Map is initialized on demand when user switches to map view
 });
 
 // Setup event listeners
@@ -697,96 +689,7 @@ function updateInlineMapMarkers() {
   }
 }
 
-// Initialize Google Map
-globalThis.initGoogleMap = function() {
-  window.mapProvider = 'google';
-  const mapCenter = UBUD_DATA.mapCenter;
-  
-  const mapElement = document.getElementById('map');
-  if (!mapElement) {
-    console.error('Map element not found');
-    return;
-  }
-  
-  // Dark theme map styles
-  const darkTheme = [
-    { elementType: 'geometry', stylers: [{ color: '#1d1d1d' }] },
-    { elementType: 'labels.text.fill', stylers: [{ color: '#888888' }] },
-    { elementType: 'labels.text.stroke', stylers: [{ color: '#1d1d1d' }] },
-    {
-      featureType: 'administrative.locality',
-      elementType: 'labels.text.fill',
-      stylers: [{ color: '#ffffff' }]
-    },
-    {
-      featureType: 'poi',
-      elementType: 'labels.text.fill',
-      stylers: [{ color: '#888888' }]
-    },
-    {
-      featureType: 'poi.park',
-      elementType: 'geometry',
-      stylers: [{ color: '#0d2818' }]
-    },
-    {
-      featureType: 'poi.park',
-      elementType: 'labels.text.fill',
-      stylers: [{ color: '#22c55e' }]
-    },
-    {
-      featureType: 'road',
-      elementType: 'geometry',
-      stylers: [{ color: '#2a2a2a' }]
-    },
-    {
-      featureType: 'road',
-      elementType: 'labels.text.fill',
-      stylers: [{ color: '#888888' }]
-    },
-    {
-      featureType: 'road.highway',
-      elementType: 'geometry',
-      stylers: [{ color: '#3a3a3a' }]
-    },
-    {
-      featureType: 'road.highway',
-      elementType: 'labels.text.fill',
-      stylers: [{ color: '#aaaaaa' }]
-    },
-    {
-      featureType: 'transit',
-      elementType: 'geometry',
-      stylers: [{ color: '#2a2a2a' }]
-    },
-    {
-      featureType: 'water',
-      elementType: 'geometry',
-      stylers: [{ color: '#0f1729' }]
-    },
-    {
-      featureType: 'water',
-      elementType: 'labels.text.fill',
-      stylers: [{ color: '#4a5568' }]
-    }
-  ];
-  
-  map = new google.maps.Map(mapElement, {
-    center: { lat: mapCenter.lat, lng: mapCenter.lng },
-    zoom: 15,
-    styles: darkTheme,
-    mapTypeControl: false,
-    fullscreenControl: false,
-    streetViewControl: false,
-    zoomControl: true,
-    zoomControlOptions: {
-      position: google.maps.ControlPosition.RIGHT_BOTTOM
-    }
-  });
-  
-  updateMapMarkers();
-};
-
-// Initialize Leaflet Map (fallback)
+// Initialize Leaflet Map
 function initLeafletMap() {
   window.mapProvider = 'leaflet';
   const mapCenter = UBUD_DATA.mapCenter;

@@ -56,8 +56,6 @@ async function startServer() {
 
 // Search Google Places
 app.get('/api/places/search', async (req, res) => {
-  console.log('📍 HIT: /api/places/search');
-  
   if (!GOOGLE_PLACES_API_KEY) {
     console.error('❌ Google Places API key not configured');
     return res.status(500).json({ error: 'Google Places API key not configured' });
@@ -75,11 +73,8 @@ app.get('/api/places/search', async (req, res) => {
     `locationbias=circle:5000@${location || '-8.5069,115.2625'}&` +
     `key=${GOOGLE_PLACES_API_KEY}`;
   
-  console.log('🔍 Searching:', query);
-  
   try {
     const data = await fetchFromGoogle(searchUrl);
-    console.log('✅ Google response:', data.status);
     res.json(data);
   } catch (err) {
     console.error('❌ Places search error:', err.message);
@@ -89,8 +84,6 @@ app.get('/api/places/search', async (req, res) => {
 
 // Get Google Place details
 app.get('/api/places/details', async (req, res) => {
-  console.log('📍 HIT: /api/places/details');
-  
   if (!GOOGLE_PLACES_API_KEY) {
     return res.status(500).json({ error: 'Google Places API key not configured' });
   }
@@ -171,13 +164,12 @@ app.post('/api/places/:id/why/generate', async (req, res) => {
     
     // If no reviews in DB but we have a google_place_id, fetch from Google
     if (reviews.length === 0 && place.google_place_id && GOOGLE_PLACES_API_KEY) {
-      console.log(`🔍 Fetching reviews from Google for place ${placeId}`);
       const googleData = await fetchGooglePlaceDetails(place.google_place_id);
       if (googleData.result && googleData.result.reviews) {
         reviews = googleData.result.reviews;
         
         // Save reviews to database
-        for (const review of reviews) {
+        for (const review of googleData.result.reviews) {
           await addReview(db, placeId, {
             author: review.author_name,
             rating: review.rating,
@@ -213,7 +205,7 @@ app.post('/api/places/why/batch-generate', async (req, res) => {
       if (existing && existing.last_generated_at) {
         const daysSince = (Date.now() - new Date(existing.last_generated_at).getTime()) / (1000 * 60 * 60 * 24);
         if (daysSince < 7) {
-          console.log(`⏭️ Skipping ${place.name} - generated ${Math.floor(daysSince)} days ago`);
+          results.push({ placeId: place.id, name: place.name, status: 'skipped' });
           continue;
         }
       }
@@ -247,7 +239,6 @@ app.post('/api/places/why/batch-generate', async (req, res) => {
         await setWhyThisPlace(db, place.id, analysis.sentence, analysis.tags);
         
         results.push({ placeId: place.id, name: place.name, status: 'generated' });
-        console.log(`✅ Generated for ${place.name}: "${analysis.sentence}"`);
         
         // Small delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 200));
