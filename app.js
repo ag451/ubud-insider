@@ -104,30 +104,28 @@ function switchView(view) {
     btn.classList.toggle('active', btn.dataset.view === view);
   });
   
-  // Show/hide containers
+  // Get elements
+  const appContainer = document.getElementById('appContainer');
   const mapContainer = document.getElementById('mapContainer');
-  const placesList = document.getElementById('placesList');
-  const searchSection = document.querySelector('.search-section');
-  const categorySection = document.querySelector('.category-section');
-  const statsBar = document.querySelector('.stats-bar');
   
   if (view === 'map') {
-    placesList.style.display = 'none';
-    searchSection.style.display = 'none';
-    categorySection.style.display = 'none';
-    statsBar.style.display = 'none';
+    // Hide app, show map
+    appContainer.style.display = 'none';
     mapContainer.classList.add('active');
+    
+    // Render map categories if needed
     renderMapCategories();
+    
+    // Update map
     setTimeout(() => {
       if (map) map.invalidateSize();
       updateMapMarkers();
     }, 100);
   } else {
-    placesList.style.display = 'flex';
-    searchSection.style.display = 'block';
-    categorySection.style.display = 'block';
-    statsBar.style.display = 'flex';
+    // Show app, hide map
+    appContainer.style.display = 'block';
     mapContainer.classList.remove('active');
+    
     renderPlaces();
   }
 }
