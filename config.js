@@ -123,8 +123,8 @@ function getPlacePhotoUrl(photoReference, maxWidth = 400) {
 
 // Batch fetch all places (call this to populate data)
 async function batchFetchAllPlaces() {
-    if (!GOOGLE_PLACES_CONFIG.enabled || !GOOGLE_PLACES_CONFIG.apiKey) {
-        console.log('ℹ️ Google Places API not configured. Skipping batch fetch.');
+    if (!GOOGLE_PLACES_CONFIG.enabled) {
+        console.log('ℹ️ Google Places API not enabled. Skipping batch fetch.');
         return;
     }
     
