@@ -756,11 +756,15 @@ function getGoogleMapsLink(place) {
   } else if (place.googleMapsUrl) {
     // Use Google Places URL from sync
     mapsUrl = place.googleMapsUrl;
+  } else if (place.address) {
+    // Use full address from Google Places API for most accurate results
+    const searchQuery = encodeURIComponent(place.address);
+    mapsUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}`;
   } else if (place.lat && place.lng) {
-    // Generate from coordinates
+    // Fallback to coordinates
     mapsUrl = `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
   } else {
-    // Generate from name search
+    // Last resort: name search
     const searchQuery = encodeURIComponent(`${place.name}, Ubud, Bali`);
     mapsUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}`;
   }
@@ -783,6 +787,10 @@ function getCardMapsLink(place) {
     mapsUrl = place.maps;
   } else if (place.googleMapsUrl) {
     mapsUrl = place.googleMapsUrl;
+  } else if (place.address) {
+    // Use full address from Google Places API for most accurate results
+    const searchQuery = encodeURIComponent(place.address);
+    mapsUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}`;
   } else if (place.lat && place.lng) {
     mapsUrl = `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
   } else {
