@@ -9,7 +9,7 @@ const GOOGLE_PLACES_CONFIG = {
     baseUrl: 'https://maps.googleapis.com/maps/api/place',
     
     // Enable Google Places features
-    enabled: false, // Set to true after adding your API key
+    enabled: true, // Set to true after adding your API key
     
     // Cache duration (24 hours)
     cacheDuration: 24 * 60 * 60 * 1000,
