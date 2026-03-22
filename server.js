@@ -19,6 +19,7 @@ app.use(express.static(path.join(__dirname)));
 
 // Google Places API configuration
 const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY || '';
+console.log('🔑 GOOGLE_PLACES_API_KEY:', GOOGLE_PLACES_API_KEY ? 'Set (hidden)' : 'NOT SET');
 
 // Database instance
 let db = null;
@@ -31,31 +32,105 @@ async function startServer() {
     // Import initial data if database is empty
     const places = await getAllPlaces(db);
     if (places.length === 0) {
-      // Load initial data from data.js
-      const fs = require('fs');
-      const dataContent = fs.readFileSync(path.join(__dirname, 'data.js'), 'utf8');
-      
-      // Extract places array from data.js (simple approach)
-      const placesMatch = dataContent.match(/places:\s*\[(.*?)\n\s*\]/s);
-      if (placesMatch) {
-        console.log('Found places data in data.js');
-        // Note: In production, you'd parse this properly
-        // For now, we'll import on first API call if needed
-      }
+      console.log('📥 Database empty, waiting for import...');
     }
     
     console.log(`✅ Database ready with ${places.length} places`);
     
     app.listen(PORT, () => {
-      console.log(`Ubud Insider server running on port ${PORT}`);
+      console.log(`🚀 Ubud Insider server running on port ${PORT}`);
     });
   } catch (err) {
-    console.error('Failed to start server:', err);
+    console.error('❌ Failed to start server:', err);
     process.exit(1);
   }
 }
 
-// ========== API ROUTES ==========
+// ========== GOOGLE PLACES PROXY (MUST BE BEFORE /:id route) ==========
+
+// Search Google Places
+app.get('/api/places/search', async (req, res) => {
+  console.log('📍 HIT: /api/places/search');
+  
+  if (!GOOGLE_PLACES_API_KEY) {
+    console.error('❌ Google Places API key not configured');
+    return res.status(500).json({ error: 'Google Places API key not configured' });
+  }
+  
+  const { query, location } = req.query;
+  if (!query) {
+    return res.status(400).json({ error: 'Query parameter required' });
+  }
+  
+  const searchUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?` +
+    `input=${encodeURIComponent(query)}&` +
+    `inputtype=textquery&` +
+    `fields=place_id,name,formatted_address,rating,user_ratings_total,geometry&` +
+    `locationbias=circle:5000@${location || '-8.5069,115.2625'}&` +
+    `key=${GOOGLE_PLACES_API_KEY}`;
+  
+  console.log('🔍 Searching:', query);
+  
+  try {
+    const data = await fetchFromGoogle(searchUrl);
+    console.log('✅ Google response:', data.status);
+    res.json(data);
+  } catch (err) {
+    console.error('❌ Places search error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch place data', details: err.message });
+  }
+});
+
+// Get Google Place details
+app.get('/api/places/details', async (req, res) => {
+  console.log('📍 HIT: /api/places/details');
+  
+  if (!GOOGLE_PLACES_API_KEY) {
+    return res.status(500).json({ error: 'Google Places API key not configured' });
+  }
+  
+  const { placeId } = req.query;
+  if (!placeId) {
+    return res.status(400).json({ error: 'placeId parameter required' });
+  }
+  
+  const fields = ['name', 'formatted_address', 'formatted_phone_number', 'opening_hours', 
+                  'rating', 'reviews', 'photos', 'website', 'url', 'geometry'];
+  
+  const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?` +
+    `place_id=${placeId}&` +
+    `fields=${fields.join(',')}&` +
+    `key=${GOOGLE_PLACES_API_KEY}`;
+  
+  try {
+    const data = await fetchFromGoogle(detailsUrl);
+    res.json(data);
+  } catch (err) {
+    console.error('❌ Places details error:', err);
+    res.status(500).json({ error: 'Failed to fetch place details' });
+  }
+});
+
+// Get Google Place photo
+app.get('/api/places/photo', async (req, res) => {
+  if (!GOOGLE_PLACES_API_KEY) {
+    return res.status(500).json({ error: 'Google Places API key not configured' });
+  }
+  
+  const { photoReference, maxWidth } = req.query;
+  if (!photoReference) {
+    return res.status(400).json({ error: 'photoReference parameter required' });
+  }
+  
+  const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?` +
+    `maxwidth=${maxWidth || 400}&` +
+    `photoreference=${photoReference}&` +
+    `key=${GOOGLE_PLACES_API_KEY}`;
+  
+  res.redirect(photoUrl);
+});
+
+// ========== DATABASE API ROUTES ==========
 
 // Get all places
 app.get('/api/places', async (req, res) => {
@@ -68,7 +143,26 @@ app.get('/api/places', async (req, res) => {
   }
 });
 
-// Get single place
+// Bulk import places
+app.post('/api/places/import', async (req, res) => {
+  try {
+    const { places } = req.body;
+    if (!Array.isArray(places)) {
+      return res.status(400).json({ error: 'Places array required' });
+    }
+    
+    for (const place of places) {
+      await upsertPlace(db, place);
+    }
+    
+    res.json({ message: `Imported ${places.length} places` });
+  } catch (err) {
+    console.error('Error importing places:', err);
+    res.status(500).json({ error: 'Failed to import places' });
+  }
+});
+
+// Get single place (MUST BE AFTER /search, /details, /photo)
 app.get('/api/places/:id', async (req, res) => {
   try {
     const place = await getPlaceById(db, req.params.id);
@@ -124,104 +218,6 @@ app.delete('/api/places/:id', async (req, res) => {
   }
 });
 
-// Bulk import places
-app.post('/api/places/import', async (req, res) => {
-  try {
-    const { places } = req.body;
-    if (!Array.isArray(places)) {
-      return res.status(400).json({ error: 'Places array required' });
-    }
-    
-    for (const place of places) {
-      await upsertPlace(db, place);
-    }
-    
-    res.json({ message: `Imported ${places.length} places` });
-  } catch (err) {
-    console.error('Error importing places:', err);
-    res.status(500).json({ error: 'Failed to import places' });
-  }
-});
-
-// ========== GOOGLE PLACES PROXY ==========
-
-// Search Google Places
-app.get('/api/places/search', async (req, res) => {
-  if (!GOOGLE_PLACES_API_KEY) {
-    return res.status(500).json({ error: 'Google Places API key not configured' });
-  }
-  
-  const { query, location } = req.query;
-  if (!query) {
-    return res.status(400).json({ error: 'Query parameter required' });
-  }
-  
-  const searchUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?` +
-    `input=${encodeURIComponent(query)}&` +
-    `inputtype=textquery&` +
-    `fields=place_id,name,formatted_address,rating,user_ratings_total,geometry&` +
-    `locationbias=circle:5000@${location || '-8.5069,115.2625'}&` +
-    `key=${GOOGLE_PLACES_API_KEY}`;
-  
-  console.log('🔍 Places search:', query);
-  
-  try {
-    const data = await fetchFromGoogle(searchUrl);
-    console.log('📡 Google response:', data.status, data.candidates ? `${data.candidates.length} candidates` : 'no candidates');
-    res.json(data);
-  } catch (err) {
-    console.error('Places search error:', err);
-    res.status(500).json({ error: 'Failed to fetch place data' });
-  }
-});
-
-// Get Google Place details
-app.get('/api/places/details', async (req, res) => {
-  if (!GOOGLE_PLACES_API_KEY) {
-    return res.status(500).json({ error: 'Google Places API key not configured' });
-  }
-  
-  const { placeId } = req.query;
-  if (!placeId) {
-    return res.status(400).json({ error: 'placeId parameter required' });
-  }
-  
-  const fields = ['name', 'formatted_address', 'formatted_phone_number', 'opening_hours', 
-                  'rating', 'reviews', 'photos', 'website', 'url', 'geometry'];
-  
-  const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?` +
-    `place_id=${placeId}&` +
-    `fields=${fields.join(',')}&` +
-    `key=${GOOGLE_PLACES_API_KEY}`;
-  
-  try {
-    const data = await fetchFromGoogle(detailsUrl);
-    res.json(data);
-  } catch (err) {
-    console.error('Places details error:', err);
-    res.status(500).json({ error: 'Failed to fetch place details' });
-  }
-});
-
-// Get Google Place photo
-app.get('/api/places/photo', async (req, res) => {
-  if (!GOOGLE_PLACES_API_KEY) {
-    return res.status(500).json({ error: 'Google Places API key not configured' });
-  }
-  
-  const { photoReference, maxWidth } = req.query;
-  if (!photoReference) {
-    return res.status(400).json({ error: 'photoReference parameter required' });
-  }
-  
-  const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?` +
-    `maxwidth=${maxWidth || 400}&` +
-    `photoreference=${photoReference}&` +
-    `key=${GOOGLE_PLACES_API_KEY}`;
-  
-  res.redirect(photoUrl);
-});
-
 // Helper function to fetch from Google API
 function fetchFromGoogle(url) {
   return new Promise((resolve, reject) => {
@@ -246,4 +242,3 @@ app.get('*', (req, res) => {
 
 // Start server
 startServer();
-// Deploy trigger: Sun Mar 22 02:47:44 PM CST 2026
