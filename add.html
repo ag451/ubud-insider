@@ -280,6 +280,7 @@
         <div class="admin-tabs">
             <button class="admin-tab active" onclick="switchTab('add')">Add New</button>
             <button class="admin-tab" onclick="switchTab('edit')">Edit Existing</button>
+            <button class="admin-tab" onclick="switchTab('tools')">Admin Tools</button>
         </div>
         
         <!-- Add New Place Tab -->
@@ -339,9 +340,52 @@
                 <!-- Places will be populated here -->
             </div>
         </div>
+        
+        <!-- Admin Tools Tab -->
+        <div id="toolsTab" class="tab-content">
+            <div id="toolsAlert"></div>
+            
+            <div class="form-group">
+                <h3 style="margin-bottom: 16px; font-size: 1.125rem;">🔄 Sync Places</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 0.875rem;">
+                    Fetch latest data from Google Places API for all places. Updates addresses, ratings, photos, and coordinates.
+                </p>
+                <button id="syncBtn" class="btn-primary" onclick="syncWithGoogle()">
+                    🔄 Sync All Places
+                </button>
+                <div id="syncProgress" style="margin-top: 12px; font-size: 0.875rem; color: var(--text-secondary);"></div>
+            </div>
+            
+            <div style="border-top: 1px solid var(--border); margin: 32px 0;"></div>
+            
+            <div class="form-group">
+                <h3 style="margin-bottom: 16px; font-size: 1.125rem;">✨ Generate "Why This Place"</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 0.875rem;">
+                    Analyze reviews and generate "Come here if you want..." summaries for all places. This may take a few minutes.
+                </p>
+                <button id="whyBtn" class="btn-primary" onclick="batchGenerateWhyThisPlace()">
+                    ✨ Generate Why This Place
+                </button>
+                <div id="whyProgress" style="margin-top: 12px; font-size: 0.875rem; color: var(--text-secondary);"></div>
+            </div>
+            
+            <div style="border-top: 1px solid var(--border); margin: 32px 0;"></div>
+            
+            <div class="form-group">
+                <h3 style="margin-bottom: 16px; font-size: 1.125rem;">🎭 Sync Vibes</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 0.875rem;">
+                    Sync vibe tags from data.js to the database. Run this after updating vibe tags in data.js.
+                </p>
+                <button id="vibesBtn" class="btn-primary" onclick="syncVibes()">
+                    🎭 Sync Vibes to Database
+                </button>
+                <div id="vibesProgress" style="margin-top: 12px; font-size: 0.875rem; color: var(--text-secondary);"></div>
+            </div>
+        </div>
     </div>
 
     <script src="data.js?v=2"></script>
+    <script src="config.js?v=2"></script>
     <script>
         let selectedPlace = null;
         let editingPlaceId = null;
@@ -681,6 +725,135 @@
                 renderPlacesList(e.target.value);
             });
         });
+        
+        // ===== ADMIN TOOLS FUNCTIONS =====
+        
+        // Sync with Google Places API
+        async function syncWithGoogle() {
+            const btn = document.getElementById('syncBtn');
+            const progress = document.getElementById('syncProgress');
+            btn.disabled = true;
+            btn.textContent = '🔄 Syncing...';
+            
+            try {
+                console.log('🚀 Starting sync with Google Places...');
+                progress.textContent = 'Testing API connection...';
+                
+                const testResponse = await fetch('/api/places/search?query=Milk%20and%20Madu%20Ubud');
+                const testData = await testResponse.json();
+                
+                if (testData.error) {
+                    showAlert('toolsAlert', '❌ API Error: ' + testData.error + '\n\nMake sure GOOGLE_PLACES_API_KEY is set.', 'error');
+                    return;
+                }
+                
+                if (testData.status === 'REQUEST_DENIED' || testData.status === 'INVALID_REQUEST') {
+                    showAlert('toolsAlert', '❌ Google API Error: ' + testData.status + '\n\nCheck API key and Places API enabled.', 'error');
+                    return;
+                }
+                
+                progress.textContent = 'Syncing all places... This may take a few minutes.';
+                
+                // Import the batch function from config.js
+                if (typeof batchFetchAllPlaces === 'function') {
+                    await batchFetchAllPlaces();
+                    showAlert('toolsAlert', '✅ Sync complete! Check console for details.', 'success');
+                    progress.textContent = '';
+                } else {
+                    // Fallback: call the API endpoint directly
+                    const response = await fetch('/api/places/import-google-data', {
+                        method: 'POST'
+                    });
+                    const result = await response.json();
+                    showAlert('toolsAlert', `✅ ${result.message || 'Sync complete!'}`, 'success');
+                    progress.textContent = '';
+                }
+                
+            } catch (err) {
+                console.error('Sync error:', err);
+                showAlert('toolsAlert', '❌ Sync failed: ' + err.message, 'error');
+                progress.textContent = '';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔄 Sync All Places';
+            }
+        }
+        
+        // Batch generate Why This Place
+        async function batchGenerateWhyThisPlace() {
+            const btn = document.getElementById('whyBtn');
+            const progress = document.getElementById('whyProgress');
+            btn.disabled = true;
+            btn.textContent = '✨ Generating...';
+            progress.textContent = 'Starting batch generation...';
+            
+            try {
+                const response = await fetch('/api/places/why/batch-generate', {
+                    method: 'POST'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to start generation');
+                }
+                
+                const data = await response.json();
+                
+                if (data.results) {
+                    const successCount = data.results.filter(r => r.status === 'generated').length;
+                    const skipCount = data.results.filter(r => r.status === 'skipped').length;
+                    const errorCount = data.results.filter(r => r.status === 'error').length;
+                    
+                    let message = `✅ Generated: ${successCount}`;
+                    if (skipCount > 0) message += ` | Skipped: ${skipCount}`;
+                    if (errorCount > 0) message += ` | Errors: ${errorCount}`;
+                    
+                    showAlert('toolsAlert', message, errorCount > 0 ? 'error' : 'success');
+                    progress.textContent = `${data.message}`;
+                } else {
+                    showAlert('toolsAlert', '✅ Generation complete!', 'success');
+                    progress.textContent = data.message || '';
+                }
+                
+            } catch (err) {
+                console.error('Why This Place generation error:', err);
+                showAlert('toolsAlert', '❌ Generation failed: ' + err.message, 'error');
+                progress.textContent = '';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '✨ Generate Why This Place';
+            }
+        }
+        
+        // Sync vibes from data.js to database
+        async function syncVibes() {
+            const btn = document.getElementById('vibesBtn');
+            const progress = document.getElementById('vibesProgress');
+            btn.disabled = true;
+            btn.textContent = '🎭 Syncing...';
+            progress.textContent = 'Syncing vibes...';
+            
+            try {
+                const response = await fetch('/api/places/sync-vibes', {
+                    method: 'POST'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to sync vibes');
+                }
+                
+                const data = await response.json();
+                showAlert('toolsAlert', `✅ ${data.message}`, 'success');
+                progress.textContent = `${data.results?.length || 0} places processed`;
+                
+            } catch (err) {
+                console.error('Vibes sync error:', err);
+                showAlert('toolsAlert', '❌ Sync failed: ' + err.message, 'error');
+                progress.textContent = '';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🎭 Sync Vibes to Database';
+            }
+        }
     </script>
 </body>
 </html>
