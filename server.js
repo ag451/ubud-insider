@@ -271,6 +271,31 @@ app.post('/api/places/why/batch-generate', async (req, res) => {
   }
 });
 
+// Directly set Why This Place data (for manual/admin updates)
+app.post('/api/places/:id/why/set', async (req, res) => {
+  try {
+    const placeId = parseInt(req.params.id);
+    const { sentence, tags } = req.body;
+    
+    if (!sentence || !tags || !Array.isArray(tags)) {
+      return res.status(400).json({ error: 'sentence and tags array required' });
+    }
+    
+    await setWhyThisPlace(db, placeId, sentence, tags);
+    
+    res.json({ 
+      success: true, 
+      placeId, 
+      sentence, 
+      tags,
+      message: 'Why This Place updated successfully'
+    });
+  } catch (err) {
+    console.error('Error setting Why This Place:', err);
+    res.status(500).json({ error: 'Failed to set Why This Place' });
+  }
+});
+
 // Sync vibes from data.js to database
 app.post('/api/places/sync-vibes', async (req, res) => {
   try {
