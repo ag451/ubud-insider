@@ -84,12 +84,17 @@ function initDatabase() {
 // Get all places
 function getAllPlaces(db) {
   return new Promise((resolve, reject) => {
-    db.all('SELECT * FROM places ORDER BY id', [], (err, rows) => {
+    db.all(`
+      SELECT p.*, w.sentence as why_sentence, w.tags as why_tags
+      FROM places p
+      LEFT JOIN why_this_place w ON p.id = w.place_id
+      ORDER BY p.id
+    `, [], (err, rows) => {
       if (err) {
         reject(err);
         return;
       }
-      // Parse vibes from JSON for each place
+      // Parse vibes and why_this_place from JSON for each place
       const places = rows.map(row => {
         if (row.vibes) {
           try {
@@ -100,6 +105,14 @@ function getAllPlaces(db) {
         } else {
           row.vibes = [];
         }
+        // Add why_this_place if exists
+        if (row.why_sentence) {
+          row.why_this_place = {
+            sentence: row.why_sentence,
+            tags: row.why_tags ? JSON.parse(row.why_tags) : [],
+            last_generated_at: row.last_generated_at
+          };
+        }
         return row;
       });
       resolve(places);
@@ -107,10 +120,15 @@ function getAllPlaces(db) {
   });
 }
 
-// Get place by ID with reviews and photos
+// Get place by ID with reviews, photos, and why_this_place
 function getPlaceById(db, id) {
   return new Promise((resolve, reject) => {
-    db.get('SELECT * FROM places WHERE id = ?', [id], (err, place) => {
+    db.get(`
+      SELECT p.*, w.sentence as why_sentence, w.tags as why_tags, w.last_generated_at
+      FROM places p
+      LEFT JOIN why_this_place w ON p.id = w.place_id
+      WHERE p.id = ?
+    `, [id], (err, place) => {
       if (err) {
         reject(err);
         return;
@@ -129,6 +147,15 @@ function getPlaceById(db, id) {
         }
       } else {
         place.vibes = [];
+      }
+
+      // Add why_this_place if exists
+      if (place.why_sentence) {
+        place.why_this_place = {
+          sentence: place.why_sentence,
+          tags: place.why_tags ? JSON.parse(place.why_tags) : [],
+          last_generated_at: place.last_generated_at
+        };
       }
 
       // Get reviews
