@@ -801,6 +801,69 @@ app.get('/api/admin/backup-status', async (req, res) => {
   }
 });
 
+// Update coordinates from Google Places
+app.post('/api/admin/update-coordinates', async (req, res) => {
+  if (!GOOGLE_PLACES_API_KEY) {
+    return res.status(400).json({ error: 'GOOGLE_PLACES_API_KEY not configured' });
+  }
+  
+  try {
+    const places = await getAllPlaces(db);
+    const results = { updated: 0, failed: 0, skipped: 0, details: [] };
+    
+    for (const place of places) {
+      // Skip if no google_place_id
+      if (!place.google_place_id) {
+        results.skipped++;
+        results.details.push({ id: place.id, name: place.name, status: 'skipped', reason: 'no google_place_id' });
+        continue;
+      }
+      
+      try {
+        // Fetch from Google Places API
+        const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.google_place_id}&fields=geometry&key=${GOOGLE_PLACES_API_KEY}`;
+        
+        const data = await fetchFromGoogle(url);
+        
+        if (data.result?.geometry?.location) {
+          const { lat, lng } = data.result.geometry.location;
+          
+          // Update in database
+          if (db && typeof db.query === 'function') {
+            // PostgreSQL
+            await db.query('UPDATE places SET lat = $1, lng = $2 WHERE id = $3', [lat, lng, place.id]);
+          } else {
+            // SQLite
+            await new Promise((resolve, reject) => {
+              db.run('UPDATE places SET lat = ?, lng = ? WHERE id = ?', [lat, lng, place.id], (err) => {
+                if (err) reject(err);
+                else resolve();
+              });
+            });
+          }
+          
+          results.updated++;
+          results.details.push({ id: place.id, name: place.name, status: 'updated', lat, lng });
+        } else {
+          results.failed++;
+          results.details.push({ id: place.id, name: place.name, status: 'failed', reason: 'no geometry data' });
+        }
+        
+        // Rate limiting - small delay
+        await new Promise(r => setTimeout(r, 100));
+        
+      } catch (err) {
+        results.failed++;
+        results.details.push({ id: place.id, name: place.name, status: 'failed', reason: err.message });
+      }
+    }
+    
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ========== STATIC FILES & SPA SUPPORT ==========
 
 // Serve index.html for all routes (SPA support)
