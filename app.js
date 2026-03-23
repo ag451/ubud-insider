@@ -436,6 +436,8 @@ function setupEventListeners() {
   if (savedLocation) {
     userLocation = JSON.parse(savedLocation);
     updateLocationUI();
+    // Re-render places with distance sorting on page load
+    renderPlaces();
   }
 }
 
