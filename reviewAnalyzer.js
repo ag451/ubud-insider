@@ -42,7 +42,10 @@ const SIGNAL_KEYWORDS = {
  * @returns {Object} - { sentence, tags }
  */
 function analyzeReviews(reviews) {
+  console.log(`  🔍 Analyzer received ${reviews?.length || 0} reviews`);
+  
   if (!reviews || reviews.length === 0) {
+    console.log(`  ⚠️ No reviews provided, using fallback`);
     return {
       sentence: "A local favorite worth discovering.",
       tags: ['Local spot']
@@ -51,7 +54,13 @@ function analyzeReviews(reviews) {
 
   // Score and filter reviews
   const scoredReviews = reviews
-    .filter(r => r.text && r.text.length > 15)
+    .filter(r => {
+      const hasText = r.text && r.text.length > 15;
+      if (!hasText) {
+        console.log(`    ⛔ Filtered out review (too short or no text): "${r.text?.substring(0, 30)}..."`);
+      }
+      return hasText;
+    })
     .map(r => ({
       ...r,
       weightedScore: calculateReviewScore(r)
@@ -59,7 +68,10 @@ function analyzeReviews(reviews) {
     .sort((a, b) => b.weightedScore - a.weightedScore)
     .slice(0, 25);
 
+  console.log(`  ✅ ${scoredReviews.length} reviews passed filtering`);
+
   if (scoredReviews.length === 0) {
+    console.log(`  ⚠️ No reviews after filtering, using fallback`);
     return {
       sentence: "A local favorite worth discovering.",
       tags: ['Local spot']
@@ -69,8 +81,19 @@ function analyzeReviews(reviews) {
   // Extract signals with per-review weighting
   const signalScores = extractWeightedSignals(scoredReviews);
   
+  // Debug: log top signals
+  console.log(`  📊 Signal scores:`);
+  for (const [cat, subcats] of Object.entries(signalScores)) {
+    const top = Object.entries(subcats).sort((a, b) => b[1] - a[1])[0];
+    if (top && top[1] > 0) {
+      console.log(`    ${cat}: ${top[0]} = ${top[1].toFixed(1)}`);
+    }
+  }
+  
   // Get top signals across different categories
   const topSignals = getTopSignalsByCategory(signalScores);
+  
+  console.log(`  🏆 Top signals: ${topSignals.map(s => s.display).join(', ')}`);
   
   // Generate natural sentence based on top signals
   const sentence = generateNaturalSentence(topSignals);
