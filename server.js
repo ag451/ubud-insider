@@ -15,6 +15,7 @@ const {
   getAllPlacesWithWhy
 } = require('./database');
 const { analyzeReviews } = require('./reviewAnalyzer');
+const { exportPlaces, importFromBackup } = require('./backup');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -30,18 +31,160 @@ console.log('🔑 GOOGLE_PLACES_API_KEY:', GOOGLE_PLACES_API_KEY ? 'Set (hidden)
 // Database instance
 let db = null;
 
+// Helper: Generate Why This Place from description when no reviews available
+function generateDescriptionBasedWhy(place) {
+  const name = place.name;
+  const description = place.description || '';
+  const category = place.category || '';
+  const area = place.area || 'Ubud';
+  
+  // Category-based templates
+  const templates = {
+    breakfast: [
+      `${name} serves up reliable breakfast classics in ${area}. A solid choice to start your day.`,
+      `Morning spot in ${area} with consistent quality. Regulars keep coming back for a reason.`,
+      `No-nonsense breakfast in ${area}. The kind of place that doesn't need to try too hard.`
+    ],
+    dinner: [
+      `Dinner spot in ${area} worth knowing about. Good food without the tourist-trap vibes.`,
+      `Evening dining in ${area} that delivers. Come hungry and you won't be disappointed.`,
+      `${name} handles dinner service well. Reliable choice in the ${area} area.`
+    ],
+    vegetarian: [
+      `Plant-based eats in ${area} that even non-vegetarians enjoy. Flavor comes first here.`,
+      `Thoughtful vegetarian food in ${area}. The kitchen knows how to work with vegetables.`,
+      `Meat-free dining in ${area} without compromise. Worth seeking out.`
+    ],
+    warung: [
+      `Local warung in ${area} serving authentic flavors at honest prices. Skip the fancy places.`,
+      `Neighborhood spot in ${area} where locals actually eat. The real deal.`,
+      `Warung-style dining in ${area}. Simple food done right, wallet-friendly prices.`
+    ],
+    'fine dining': [
+      `Upscale experience in ${area} for when you want to treat yourself. Special occasion worthy.`,
+      `Special dinner destination in ${area}. The extra effort shows on every plate.`,
+      `${name} brings refined dining to ${area}. Worth dressing up for.`
+    ],
+    drinks: [
+      `Evening spot in ${area} with good drinks and better vibes. Settle in for a while.`,
+      `Bar scene in ${area} done right. Come solo or with friends - both work here.`,
+      `Drinks destination in ${area}. The bartenders know what they're doing.`
+    ],
+    yoga: [
+      `Yoga studio in ${area} with solid teaching. Your practice will feel the difference.`,
+      `Well-run classes in ${area} for all levels. No ego, just yoga.`,
+      `${name} keeps the yoga tradition alive in ${area}. Worth unrolling your mat here.`
+    ],
+    healers: [
+      `Healing practice in ${area} with genuine intentions. Come with an open mind.`,
+      `Wellness spot in ${area} that takes the work seriously. Results speak for themselves.`,
+      `Alternative healing in ${area} worth exploring. The practitioners are the real deal.`
+    ],
+    massage: [
+      `Massage spot in ${area} that knows how to fix tired muscles. Skip the fancy spas.`,
+      `Bodywork in ${area} done right. You'll walk out feeling like a new person.`,
+      `Therapeutic touch in ${area} at fair prices. Book extra time - you'll want it.`
+    ],
+    walks: [
+      `Scenic walk in ${area} worth the effort. Bring water and take your time.`,
+      `${area} path that rewards the curious. Early morning or late afternoon are best.`,
+      `Walking route in ${area} away from the crowds. Your own slice of Ubud peace.`
+    ],
+    excursions: [
+      `Day trip from Ubud that's worth the journey. Plan for a full morning or afternoon.`,
+      `Excursion that delivers on the hype. Beat the crowds by going early.`,
+      `Must-see spot worth leaving town for. The photos don't do it justice.`
+    ]
+  };
+  
+  // Pick template based on category
+  const catTemplates = templates[category] || templates['breakfast'];
+  const template = catTemplates[Math.floor(Math.random() * catTemplates.length)];
+  
+  // If we have a description, try to incorporate it
+  if (description && description.length > 10) {
+    // Use description as a hint but keep it natural
+    const descHint = description.split('.')[0]; // First sentence
+    if (descHint.length > 5 && descHint.length < 60) {
+      return `${descHint}. ${template.split('.').slice(1).join('.').trim()}`;
+    }
+  }
+  
+  return template;
+}
+
+// Helper: Generate tags from place data
+function generateTagsFromPlace(place) {
+  const tags = [];
+  const category = place.category || '';
+  const area = place.area || '';
+  
+  // Category-based tags
+  const categoryTags = {
+    breakfast: ['Breakfast Spot', 'Morning Favorite'],
+    dinner: ['Dinner', 'Evening Dining'],
+    vegetarian: ['Vegetarian', 'Plant-based'],
+    warung: ['Local Warung', 'Authentic'],
+    'fine dining': ['Fine Dining', 'Special Occasion'],
+    drinks: ['Drinks', 'Evening Spot'],
+    yoga: ['Yoga', 'Wellness'],
+    healers: ['Healing', 'Alternative'],
+    massage: ['Massage', 'Relaxation'],
+    walks: ['Walk', 'Scenic'],
+    excursions: ['Day Trip', 'Must See']
+  };
+  
+  if (categoryTags[category]) {
+    tags.push(...categoryTags[category]);
+  }
+  
+  // Area-based tags
+  if (area) {
+    if (area.toLowerCase().includes('centre') || area.toLowerCase().includes('center')) {
+      tags.push('Central');
+    } else if (area.toLowerCase().includes('rice')) {
+      tags.push('Rice Field Views');
+    } else if (area.toLowerCase().includes('jungle')) {
+      tags.push('Jungle Setting');
+    } else {
+      tags.push(area);
+    }
+  }
+  
+  // Add generic tags based on description
+  const desc = (place.description || '').toLowerCase();
+  if (desc.includes('cheap') || desc.includes('affordable')) tags.push('Good Value');
+  if (desc.includes('popular') || desc.includes('famous')) tags.push('Popular');
+  if (desc.includes('quiet') || desc.includes('peaceful')) tags.push('Quiet');
+  if (desc.includes('view') || desc.includes('scenic')) tags.push('Great Views');
+  
+  return tags.slice(0, 3); // Max 3 tags
+}
+
 // Initialize database
 async function startServer() {
   try {
     db = await initDatabase();
     
-    // Import initial data if database is empty
+    // Try to restore from backup if database is empty
     const places = await getAllPlaces(db);
     if (places.length === 0) {
-      console.log('📥 Database empty, waiting for import...');
+      console.log('📥 Database empty, attempting to restore from backup...');
+      const restored = await importFromBackup(db);
+      if (restored > 0) {
+        console.log(`✅ Restored ${restored} places from backup`);
+      } else {
+        console.log('📭 No backup available, starting fresh');
+      }
+    } else {
+      console.log(`✅ Database ready with ${places.length} places`);
+      // Export backup on startup to keep file current
+      try {
+        await exportPlaces(db);
+      } catch (exportErr) {
+        console.log('⚠️ Could not export backup:', exportErr.message);
+      }
     }
-    
-    console.log(`✅ Database ready with ${places.length} places`);
     
     app.listen(PORT, () => {
       console.log(`🚀 Ubud Insider server running on port ${PORT}`);
@@ -397,6 +540,59 @@ app.post('/api/places', async (req, res) => {
     }
     
     await upsertPlace(db, place);
+    
+    // Auto-generate Why This Place if we have enough info
+    if (place.google_place_id || place.description) {
+      console.log(`📝 Auto-generating Why This Place for: ${place.name}`);
+      
+      // Run in background - don't block the response
+      (async () => {
+        try {
+          let reviews = [];
+          
+          // Try to fetch from Google if we have a place ID
+          if (place.google_place_id && GOOGLE_PLACES_API_KEY) {
+            try {
+              const googleData = await fetchGooglePlaceDetails(place.google_place_id);
+              if (googleData.result && googleData.result.reviews) {
+                reviews = googleData.result.reviews;
+                console.log(`  ✅ Fetched ${reviews.length} reviews from Google`);
+                
+                // Save reviews to database
+                for (const review of reviews) {
+                  await addReview(db, place.id, {
+                    text: review.text,
+                    rating: review.rating,
+                    author: review.author_name,
+                    time: review.time
+                  });
+                }
+              }
+            } catch (fetchErr) {
+              console.log(`  ⚠️ Could not fetch Google reviews: ${fetchErr.message}`);
+            }
+          }
+          
+          // Generate Why This Place using our researched templates if no reviews
+          if (reviews.length === 0) {
+            // Use description-based generation
+            const sentence = generateDescriptionBasedWhy(place);
+            const tags = generateTagsFromPlace(place);
+            
+            await setWhyThisPlace(db, place.id, sentence, tags);
+            console.log(`  ✅ Generated Why This Place from description`);
+          } else {
+            // Use review-based generation
+            const analysis = analyzeReviews(reviews, place.category, place.name);
+            await setWhyThisPlace(db, place.id, analysis.sentence, analysis.tags);
+            console.log(`  ✅ Generated Why This Place from reviews`);
+          }
+        } catch (genErr) {
+          console.error(`  ❌ Failed to auto-generate Why This Place:`, genErr);
+        }
+      })();
+    }
+    
     res.status(201).json({ id: place.id, message: 'Place created' });
   } catch (err) {
     console.error('Error creating place:', err);
@@ -478,6 +674,50 @@ function fetchFromGoogle(url) {
     }).on('error', reject);
   });
 }
+
+// ========== BACKUP & RESTORE ENDPOINTS ==========
+
+// Manual backup trigger
+app.post('/api/admin/backup', async (req, res) => {
+  try {
+    const count = await exportPlaces(db);
+    res.json({ success: true, message: `Backed up ${count} places`, file: 'data/places-backup.json' });
+  } catch (err) {
+    console.error('Backup error:', err);
+    res.status(500).json({ error: 'Backup failed', details: err.message });
+  }
+});
+
+// Manual restore trigger
+app.post('/api/admin/restore', async (req, res) => {
+  try {
+    const count = await importFromBackup(db);
+    res.json({ success: true, message: `Restored ${count} places from backup` });
+  } catch (err) {
+    console.error('Restore error:', err);
+    res.status(500).json({ error: 'Restore failed', details: err.message });
+  }
+});
+
+// Get backup status
+app.get('/api/admin/backup-status', async (req, res) => {
+  try {
+    const fs = require('fs');
+    const stats = await fs.promises.stat(BACKUP_FILE).catch(() => null);
+    const placeCount = (await getAllPlaces(db)).length;
+    
+    res.json({
+      places_in_database: placeCount,
+      backup_exists: !!stats,
+      last_backup: stats ? new Date(stats.mtime).toISOString() : null,
+      backup_file: 'data/places-backup.json'
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ========== STATIC FILES & SPA SUPPORT ==========
 
 // Serve index.html for all routes (SPA support)
 app.get('*', (req, res) => {
