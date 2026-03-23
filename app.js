@@ -603,11 +603,13 @@ function switchViewDesktop(view) {
   const placesList = document.getElementById('placesList');
   const mapInlineContainer = document.getElementById('mapInlineContainer');
   const categorySection = document.getElementById('categorySection');
+  const vibeSection = document.getElementById('vibeSection');
   
   if (view === 'map') {
     placesList.style.display = 'none';
     mapInlineContainer.style.display = 'block';
     categorySection.style.display = 'none';
+    vibeSection.style.display = 'none';
     
     renderInlineMapCategories();
     
@@ -625,6 +627,7 @@ function switchViewDesktop(view) {
     placesList.style.display = 'flex';
     mapInlineContainer.style.display = 'none';
     categorySection.style.display = 'block';
+    vibeSection.style.display = 'block';
     renderPlaces();
   }
 }
