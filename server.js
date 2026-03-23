@@ -272,6 +272,7 @@ app.post('/api/places/why/batch-generate', async (req, res) => {
 });
 
 // Directly set Why This Place data (for manual/admin updates)
+// Triggered redeploy: March 23, 2026
 app.post('/api/places/:id/why/set', async (req, res) => {
   try {
     const placeId = parseInt(req.params.id);
