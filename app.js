@@ -1173,9 +1173,9 @@ function openPlaceModal(placeId) {
 function getGoogleMapsLink(place) {
   let mapsUrl;
   
-  // Priority 1: Full address from Google Places API (most accurate)
+  // Priority 1: Full address from Google Places API with place name (most accurate)
   if (place.address && place.address.length > 10 && place.address.includes('Ubud')) {
-    const searchQuery = encodeURIComponent(place.address);
+    const searchQuery = encodeURIComponent(`${place.name}, ${place.address}`);
     mapsUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}`;
   }
   // Priority 2: Google Places URL from sync
@@ -1186,9 +1186,10 @@ function getGoogleMapsLink(place) {
   else if (place.maps) {
     mapsUrl = place.maps;
   }
-  // Priority 4: Coordinates
+  // Priority 4: Coordinates with place name
   else if (place.lat && place.lng) {
-    mapsUrl = `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
+    const searchQuery = encodeURIComponent(`${place.name}`);
+    mapsUrl = `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}&query_place=${searchQuery}`;
   }
   // Last resort: name search
   else {
@@ -1210,9 +1211,9 @@ function getGoogleMapsLink(place) {
 function getCardMapsLink(place) {
   let mapsUrl;
   
-  // Priority 1: Full address from Google Places API (most accurate)
+  // Priority 1: Full address from Google Places API with place name (most accurate)
   if (place.address && place.address.length > 10 && place.address.includes('Ubud')) {
-    const searchQuery = encodeURIComponent(place.address);
+    const searchQuery = encodeURIComponent(`${place.name}, ${place.address}`);
     mapsUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}`;
   }
   // Priority 2: Google Places URL from sync
@@ -1223,9 +1224,10 @@ function getCardMapsLink(place) {
   else if (place.maps) {
     mapsUrl = place.maps;
   }
-  // Priority 4: Coordinates
+  // Priority 4: Coordinates with place name
   else if (place.lat && place.lng) {
-    mapsUrl = `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
+    const searchQuery = encodeURIComponent(`${place.name}`);
+    mapsUrl = `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}&query_place=${searchQuery}`;
   }
   // Last resort: name search
   else {
