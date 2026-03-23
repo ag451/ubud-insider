@@ -1090,6 +1090,11 @@ function getFilteredPlaces() {
       if (b.distance === null) return -1;
       return a.distance - b.distance;
     });
+  } else {
+    // Clear distance from all places when no user location
+    places.forEach(place => {
+      place.distance = null;
+    });
   }
   
   return places;
