@@ -196,17 +196,20 @@ app.post('/api/places/:id/why/generate', async (req, res) => {
 // Batch generate Why This Place for all places
 app.post('/api/places/why/batch-generate', async (req, res) => {
   try {
+    const { force = false } = req.body;
     const places = await getAllPlaces(db);
     const results = [];
     
     for (const place of places) {
-      // Skip if already generated recently (within 7 days)
-      const existing = await getWhyThisPlace(db, place.id);
-      if (existing && existing.last_generated_at) {
-        const daysSince = (Date.now() - new Date(existing.last_generated_at).getTime()) / (1000 * 60 * 60 * 24);
-        if (daysSince < 7) {
-          results.push({ placeId: place.id, name: place.name, status: 'skipped' });
-          continue;
+      // Skip if already generated recently (within 7 days) unless force is true
+      if (!force) {
+        const existing = await getWhyThisPlace(db, place.id);
+        if (existing && existing.last_generated_at) {
+          const daysSince = (Date.now() - new Date(existing.last_generated_at).getTime()) / (1000 * 60 * 60 * 24);
+          if (daysSince < 7) {
+            results.push({ placeId: place.id, name: place.name, status: 'skipped' });
+            continue;
+          }
         }
       }
       
@@ -238,7 +241,7 @@ app.post('/api/places/why/batch-generate', async (req, res) => {
         const analysis = analyzeReviews(reviews);
         await setWhyThisPlace(db, place.id, analysis.sentence, analysis.tags);
         
-        results.push({ placeId: place.id, name: place.name, status: 'generated' });
+        results.push({ placeId: place.id, name: place.name, status: 'generated', sentence: analysis.sentence });
         
         // Small delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 200));

@@ -361,10 +361,13 @@
             <div class="form-group">
                 <h3 style="margin-bottom: 16px; font-size: 1.125rem;">✨ Generate "Why This Place"</h3>
                 <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 0.875rem;">
-                    Analyze reviews and generate "Come here if you want..." summaries for all places. This may take a few minutes.
+                    Analyze reviews and generate natural, friend-like summaries for all places. This may take a few minutes.
                 </p>
                 <button id="whyBtn" class="btn-primary" onclick="batchGenerateWhyThisPlace()">
                     ✨ Generate Why This Place
+                </button>
+                <button id="whyForceBtn" class="btn-secondary" onclick="batchGenerateWhyThisPlace(true)" style="margin-left: 8px;">
+                    🔄 Force Regenerate All
                 </button>
                 <div id="whyProgress" style="margin-top: 12px; font-size: 0.875rem; color: var(--text-secondary);"></div>
             </div>
@@ -780,16 +783,20 @@
         }
         
         // Batch generate Why This Place
-        async function batchGenerateWhyThisPlace() {
-            const btn = document.getElementById('whyBtn');
+        async function batchGenerateWhyThisPlace(force = false) {
+            const btn = document.getElementById(force ? 'whyForceBtn' : 'whyBtn');
+            const otherBtn = document.getElementById(force ? 'whyBtn' : 'whyForceBtn');
             const progress = document.getElementById('whyProgress');
             btn.disabled = true;
-            btn.textContent = '✨ Generating...';
+            if (otherBtn) otherBtn.disabled = true;
+            btn.textContent = force ? '🔄 Regenerating...' : '✨ Generating...';
             progress.textContent = 'Starting batch generation...';
             
             try {
                 const response = await fetch('/api/places/why/batch-generate', {
-                    method: 'POST'
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ force })
                 });
                 
                 if (!response.ok) {
@@ -809,6 +816,13 @@
                     
                     showAlert('toolsAlert', message, errorCount > 0 ? 'error' : 'success');
                     progress.textContent = `${data.message}`;
+                    
+                    // Log sample outputs to console for verification
+                    const samples = data.results.filter(r => r.sentence).slice(0, 5);
+                    if (samples.length > 0) {
+                        console.log('Sample outputs:');
+                        samples.forEach(s => console.log(`  ${s.name}: "${s.sentence}"`));
+                    }
                 } else {
                     showAlert('toolsAlert', '✅ Generation complete!', 'success');
                     progress.textContent = data.message || '';
@@ -820,7 +834,8 @@
                 progress.textContent = '';
             } finally {
                 btn.disabled = false;
-                btn.textContent = '✨ Generate Why This Place';
+                if (otherBtn) otherBtn.disabled = false;
+                btn.textContent = force ? '🔄 Force Regenerate All' : '✨ Generate Why This Place';
             }
         }
         
