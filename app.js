@@ -581,13 +581,11 @@ function switchViewDesktop(view) {
   const placesList = document.getElementById('placesList');
   const mapInlineContainer = document.getElementById('mapInlineContainer');
   const categorySection = document.getElementById('categorySection');
-  const vibeSection = document.getElementById('vibeSection');
   
   if (view === 'map') {
     placesList.style.display = 'none';
     mapInlineContainer.style.display = 'block';
     categorySection.style.display = 'none';
-    vibeSection.style.display = 'none';
     
     renderInlineMapCategories();
     
@@ -605,7 +603,6 @@ function switchViewDesktop(view) {
     placesList.style.display = 'flex';
     mapInlineContainer.style.display = 'none';
     categorySection.style.display = 'block';
-    vibeSection.style.display = 'block';
     renderPlaces();
   }
 }
@@ -622,6 +619,73 @@ function renderInlineMapCategories() {
     btn.textContent = `${cat.icon} ${cat.name}`;
     btn.onclick = () => selectCategory(cat.id);
     container.appendChild(btn);
+  });
+  
+  // Render vibe filters for inline map
+  renderInlineMapVibes();
+}
+
+// Render vibe filters for inline map (desktop)
+function renderInlineMapVibes() {
+  const container = document.getElementById('inlineMapVibeList');
+  if (!container || container.children.length > 0) return; // Already rendered
+  
+  UBUD_DATA.vibes.forEach(vibe => {
+    const btn = document.createElement('button');
+    btn.className = 'map-vibe-btn';
+    btn.dataset.vibe = vibe.id;
+    btn.innerHTML = `${vibe.icon} ${vibe.name}`;
+    btn.onclick = () => toggleMapVibe(vibe.id);
+    container.appendChild(btn);
+  });
+}
+
+// Render vibe filters for mobile map
+function renderMapVibes() {
+  const container = document.getElementById('mapVibeList');
+  if (!container || container.children.length > 0) return; // Already rendered
+  
+  UBUD_DATA.vibes.forEach(vibe => {
+    const btn = document.createElement('button');
+    btn.className = 'map-vibe-btn';
+    btn.dataset.vibe = vibe.id;
+    btn.innerHTML = `${vibe.icon} ${vibe.name}`;
+    btn.onclick = () => toggleMapVibe(vibe.id);
+    container.appendChild(btn);
+  });
+}
+
+// Toggle vibe from map view
+function toggleMapVibe(vibeId) {
+  const index = selectedVibes.indexOf(vibeId);
+  if (index === -1) {
+    selectedVibes.push(vibeId);
+  } else {
+    selectedVibes.splice(index, 1);
+  }
+  
+  // Update all vibe button states (main and map)
+  updateAllVibeButtons();
+  
+  // Update markers
+  if (window.mapProvider === 'google' || window.mapProvider === 'leaflet') {
+    updateMapMarkers();
+  }
+  if (window.inlineMap) {
+    updateInlineMapMarkers();
+  }
+}
+
+// Update all vibe button states across list and map views
+function updateAllVibeButtons() {
+  // Main vibe buttons
+  document.querySelectorAll('.vibe-btn').forEach(btn => {
+    btn.classList.toggle('active', selectedVibes.includes(btn.dataset.vibe));
+  });
+  
+  // Map vibe buttons (mobile and inline)
+  document.querySelectorAll('.map-vibe-btn').forEach(btn => {
+    btn.classList.toggle('active', selectedVibes.includes(btn.dataset.vibe));
   });
 }
 
@@ -872,17 +936,19 @@ function toggleVibe(vibeId) {
     selectedVibes.push(vibeId);
   }
   
-  // Update UI
-  document.querySelectorAll('.vibe-btn').forEach(btn => {
-    btn.classList.toggle('active', selectedVibes.includes(btn.dataset.vibe));
-  });
+  // Update all vibe buttons across list and map views
+  updateAllVibeButtons();
   
-  // Re-render places
+  // Re-render places or update markers
   if (currentView === 'list') {
     renderPlaces();
   } else {
     updateMapMarkers();
+    if (window.inlineMap) {
+      updateInlineMapMarkers();
+    }
   }
+}
 }
 
 // Select category
@@ -940,6 +1006,9 @@ function renderMapCategories() {
     btn.onclick = () => selectCategory(cat.id);
     container.appendChild(btn);
   });
+  
+  // Render vibe filters for mobile map
+  renderMapVibes();
   
   const mapSearchInput = document.getElementById('mapSearchInput');
   if (mapSearchInput) {

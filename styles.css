@@ -772,6 +772,50 @@ body {
     color: #000;
 }
 
+/* Map Vibe Scroll - for map view filters */
+.map-vibe-scroll {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding: 4px;
+    margin-top: 8px;
+}
+
+.map-vibe-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.map-vibe-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(168, 85, 247, 0.1);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    border-radius: var(--radius-full);
+    color: var(--vibe-text, #c084fc);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.map-vibe-btn:hover {
+    background: rgba(168, 85, 247, 0.2);
+    border-color: rgba(168, 85, 247, 0.5);
+}
+
+.map-vibe-btn.active {
+    background: rgba(168, 85, 247, 0.3);
+    border-color: var(--vibe-accent, #a855f7);
+    color: var(--vibe-text, #c084fc);
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+}
+
 /* Desktop - embedded map */
 @media (min-width: 769px) {
     .map-container {
