@@ -164,17 +164,32 @@ function generateTagsFromPlace(place) {
 // Initialize database
 async function startServer() {
   try {
+    console.log('🚀 Starting server initialization...');
     db = await initDatabase();
+    console.log('✅ Database initialized');
     
     // Try to restore from backup if database is empty
-    const places = await getAllPlaces(db);
+    let places;
+    try {
+      places = await getAllPlaces(db);
+      console.log(`📊 Found ${places.length} places in database`);
+    } catch (queryErr) {
+      console.error('❌ Error querying places:', queryErr.message);
+      console.error(queryErr.stack);
+      places = [];
+    }
+    
     if (places.length === 0) {
       console.log('📥 Database empty, attempting to restore from backup...');
-      const restored = await importFromBackup(db);
-      if (restored > 0) {
-        console.log(`✅ Restored ${restored} places from backup`);
-      } else {
-        console.log('📭 No backup available, starting fresh');
+      try {
+        const restored = await importFromBackup(db);
+        if (restored > 0) {
+          console.log(`✅ Restored ${restored} places from backup`);
+        } else {
+          console.log('📭 No backup available, starting fresh');
+        }
+      } catch (backupErr) {
+        console.error('❌ Backup restore failed:', backupErr.message);
       }
     } else {
       console.log(`✅ Database ready with ${places.length} places`);
@@ -188,12 +203,81 @@ async function startServer() {
     
     app.listen(PORT, () => {
       console.log(`🚀 Ubud Insider server running on port ${PORT}`);
+      console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🗄️  Database: ${process.env.DATABASE_URL ? 'PostgreSQL' : 'SQLite'}`);
     });
   } catch (err) {
     console.error('❌ Failed to start server:', err);
+    console.error(err.stack);
     process.exit(1);
   }
 }
+
+// ========== DEBUG ENDPOINTS ==========
+app.get('/api/debug/db-status', async (req, res) => {
+  try {
+    const status = {
+      timestamp: new Date().toISOString(),
+      environment: {
+        NODE_ENV: process.env.NODE_ENV,
+        DATABASE_URL_present: !!process.env.DATABASE_URL,
+        PGDATABASE_present: !!process.env.PGDATABASE,
+        DATABASE_URL_preview: process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 30) + '...' : null
+      },
+      database: {
+        type: null,
+        connected: false,
+        error: null,
+        tables: {}
+      }
+    };
+    
+    // Check which DB type we're using
+    const usePg = !!(process.env.DATABASE_URL || process.env.PGDATABASE);
+    status.database.type = usePg ? 'PostgreSQL' : 'SQLite';
+    
+    if (!db) {
+      status.database.error = 'Database not initialized';
+      return res.json(status);
+    }
+    
+    try {
+      if (usePg) {
+        // PostgreSQL checks
+        const placeCount = await db.query('SELECT COUNT(*) as count FROM places');
+        const whyCount = await db.query('SELECT COUNT(*) as count FROM why_this_place');
+        const reviewsCount = await db.query('SELECT COUNT(*) as count FROM reviews');
+        
+        status.database.connected = true;
+        status.database.tables.places = parseInt(placeCount.rows[0].count);
+        status.database.tables.why_this_place = parseInt(whyCount.rows[0].count);
+        status.database.tables.reviews = parseInt(reviewsCount.rows[0].count);
+        
+        // Sample data
+        const sample = await db.query('SELECT id, name, rating, address FROM places LIMIT 3');
+        status.database.sample_places = sample.rows;
+      } else {
+        // SQLite checks
+        const placeCount = await new Promise((resolve, reject) => {
+          db.get('SELECT COUNT(*) as count FROM places', (err, row) => {
+            if (err) reject(err);
+            else resolve(row.count);
+          });
+        });
+        
+        status.database.connected = true;
+        status.database.tables.places = placeCount;
+      }
+    } catch (dbErr) {
+      status.database.error = dbErr.message;
+      status.database.stack = dbErr.stack;
+    }
+    
+    res.json(status);
+  } catch (err) {
+    res.status(500).json({ error: err.message, stack: err.stack });
+  }
+});
 
 // ========== GOOGLE PLACES PROXY (MUST BE BEFORE /:id route) ==========
 
