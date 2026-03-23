@@ -85,7 +85,7 @@ function initDatabase() {
 function getAllPlaces(db) {
   return new Promise((resolve, reject) => {
     db.all(`
-      SELECT p.*, w.sentence as why_sentence, w.tags as why_tags
+      SELECT p.*, w.sentence as why_sentence, w.tags as why_tags, w.last_generated_at
       FROM places p
       LEFT JOIN why_this_place w ON p.id = w.place_id
       ORDER BY p.id
