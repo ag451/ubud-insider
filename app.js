@@ -404,10 +404,22 @@ function setupEventListeners() {
     updateLocationUI();
     showLocationStatus(`📍 ${userLocation.address} — Places sorted by distance`, 'success');
     
+    // Re-render places and update markers
     renderPlaces();
     
-    if (map && window.mapProvider === 'leaflet') {
-      map.setView([userLocation.lat, userLocation.lng], 15);
+    if (currentView === 'map') {
+      if (map && window.mapProvider === 'leaflet') {
+        map.setView([userLocation.lat, userLocation.lng], 15);
+        updateMapMarkers();
+      }
+      if (window.inlineMap) {
+        window.inlineMap.setView([userLocation.lat, userLocation.lng], 15);
+        updateInlineMapMarkers();
+      }
+    } else {
+      if (map && window.mapProvider === 'leaflet') {
+        map.setView([userLocation.lat, userLocation.lng], 15);
+      }
     }
     
     hideAutocomplete();
@@ -491,6 +503,14 @@ function clearUserLocation() {
   
   // Re-render without distance sorting
   renderPlaces();
+  
+  // Update map markers if on map view
+  if (currentView === 'map') {
+    updateMapMarkers();
+    if (window.inlineMap) {
+      updateInlineMapMarkers();
+    }
+  }
 }
 
 // Update location UI

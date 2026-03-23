@@ -259,23 +259,25 @@ body {
     color: var(--text-muted);
 }
 
-.location-btn {
-    padding: 10px 16px;
-    background: var(--accent);
+.location-clear-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: transparent;
     border: none;
     border-radius: var(--radius-md);
-    color: #000;
-    font-size: 0.875rem;
-    font-weight: 600;
+    color: var(--text-muted);
     cursor: pointer;
     transition: all 0.2s ease;
-    white-space: nowrap;
     flex-shrink: 0;
+    margin-right: 4px;
 }
 
-.location-btn:hover {
-    background: var(--accent-hover);
-    transform: translateY(-1px);
+.location-clear-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
 }
 
 .location-status {

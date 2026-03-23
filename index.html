@@ -52,11 +52,11 @@
                     <circle cx="12" cy="10" r="3"></circle>
                 </svg>
                 <input type="text" id="locationInput" class="location-input" placeholder="Enter your address (e.g., Yoga Barn, Ubud)">
-                <button id="setLocationBtn" class="location-btn" onclick="setUserLocation()">
-                    📍 Set Location
-                </button>
-                <button id="clearLocationBtn" class="clear-btn" style="display: none;" onclick="clearUserLocation()">
-                    ✕
+                <button id="clearLocationBtn" class="location-clear-btn" style="display: none;" onclick="clearUserLocation()" aria-label="Clear location">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
                 </button>
             </div>            
             <div id="locationAutocomplete" class="location-autocomplete" style="display: none;"></div>
