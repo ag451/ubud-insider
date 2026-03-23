@@ -36,17 +36,6 @@ const SIGNAL_KEYWORDS = {
   }
 };
 
-// Sentence templates for different signal combinations
-const SENTENCE_TEMPLATES = {
-  food_atmosphere: (food, atmos) => `Come here if you want ${food} in ${atmos}.`,
-  food_location: (food, loc) => `Come here if you want ${food} with ${loc}.`,
-  atmosphere_location: (atmos, loc) => `Come here if you want ${atmos} in ${loc}.`,
-  food_service: (food, svc) => `Come here if you want ${food} and ${svc}.`,
-  crowd_food: (crowd, food) => `Come here if you want ${food} in ${crowd}.`,
-  nature_food: (nature, food) => `Come here if you want ${food} with ${nature}.`,
-  default: (items) => `Come here if you want ${items.join(' and ')}.`
-};
-
 /**
  * Analyze reviews and generate "Why This Place" content
  * @param {Array} reviews - Array of Google Places review objects
@@ -55,7 +44,7 @@ const SENTENCE_TEMPLATES = {
 function analyzeReviews(reviews) {
   if (!reviews || reviews.length === 0) {
     return {
-      sentence: 'Come here if you want to discover a local favorite.',
+      sentence: "A local favorite worth discovering.",
       tags: ['Local spot']
     };
   }
@@ -72,7 +61,7 @@ function analyzeReviews(reviews) {
 
   if (scoredReviews.length === 0) {
     return {
-      sentence: 'Come here if you want to discover a local favorite.',
+      sentence: "A local favorite worth discovering.",
       tags: ['Local spot']
     };
   }
@@ -83,8 +72,8 @@ function analyzeReviews(reviews) {
   // Get top signals across different categories
   const topSignals = getTopSignalsByCategory(signalScores);
   
-  // Generate unique sentence based on top signals
-  const sentence = generateUniqueSentence(topSignals);
+  // Generate natural sentence based on top signals
+  const sentence = generateNaturalSentence(topSignals);
   
   // Generate tags from top signals
   const tags = generateTagsFromSignals(topSignals);
@@ -102,7 +91,7 @@ function calculateReviewScore(review) {
   if (review.rating === 5) score *= 3;
   else if (review.rating === 4) score *= 2;
   else if (review.rating === 3) score *= 1;
-  else score *= 0.5; // Lower ratings count less
+  else score *= 0.5;
   
   // Recency weight
   if (review.time) {
@@ -114,7 +103,7 @@ function calculateReviewScore(review) {
     else if (daysAgo <= 365) score *= 1.2;
   }
   
-  // Length bonus (detailed reviews are more valuable)
+  // Length bonus
   const textLength = review.text?.length || 0;
   if (textLength > 200) score *= 1.3;
   else if (textLength > 100) score *= 1.1;
@@ -128,7 +117,6 @@ function calculateReviewScore(review) {
 function extractWeightedSignals(scoredReviews) {
   const signalScores = {};
   
-  // Initialize all categories
   for (const category of Object.keys(SIGNAL_KEYWORDS)) {
     signalScores[category] = {};
     for (const subcategory of Object.keys(SIGNAL_KEYWORDS[category])) {
@@ -136,7 +124,6 @@ function extractWeightedSignals(scoredReviews) {
     }
   }
   
-  // Score each review's keywords weighted by review score
   for (const review of scoredReviews) {
     const text = review.text.toLowerCase();
     const reviewWeight = review.weightedScore;
@@ -174,94 +161,197 @@ function getTopSignalsByCategory(signalScores) {
         category,
         subcategory: topSubcategory,
         score: topScore,
-        display: getDisplayName(category, topSubcategory),
-        article: getArticle(category, topSubcategory)
+        display: getDisplayName(category, topSubcategory)
       });
     }
   }
   
-  // Sort by score descending
   return topByCategory.sort((a, b) => b.score - a.score);
 }
 
 /**
- * Get appropriate article for a signal
+ * Generate a natural, friend-like sentence based on the top signals
  */
-function getArticle(category, subcategory) {
-  const needsA = ['calm', 'lively', 'aesthetic', 'cozy', 'nature', 'central', 'hidden', 'scenic', 'friendly', 'fast'];
-  return needsA.includes(subcategory) ? 'a' : '';
+function generateNaturalSentence(topSignals) {
+  if (topSignals.length === 0) {
+    return "A local favorite worth discovering.";
+  }
+  
+  const primary = topSignals[0];
+  const secondary = topSignals[1];
+  
+  // Get natural phrasing for signals
+  const p = {
+    cat: primary.category,
+    disp: primary.display,
+    isFood: primary.category === 'food_quality',
+    isAtmos: primary.category === 'atmosphere',
+    isLoc: primary.category === 'location',
+    isNature: primary.category === 'nature',
+    isCrowd: primary.category === 'crowd'
+  };
+  
+  const s = secondary ? {
+    cat: secondary.category,
+    disp: secondary.display,
+    isFood: secondary.category === 'food_quality',
+    isAtmos: secondary.category === 'atmosphere',
+    isLoc: secondary.category === 'location',
+    isNature: secondary.category === 'nature'
+  } : null;
+  
+  // Build natural sentences based on signal combinations
+  // Food + Atmosphere
+  if (p.isFood && s?.isAtmos) {
+    return pickOne([
+      `${capitalize(p.disp)} in a ${s.disp}.`,
+      `The kind of place where ${p.disp} meets ${s.disp}.`,
+      `You come for the ${p.disp}, you stay for the ${s.disp}.`,
+      `${capitalize(p.disp)} with ${s.disp}.`
+    ]);
+  }
+  
+  // Food + Location
+  if (p.isFood && s?.isLoc) {
+    return pickOne([
+      `${capitalize(p.disp)} in ${article(s.disp)} ${s.disp}.`,
+      `The ${s.disp} spot for ${p.disp}.`,
+      `${capitalize(s.disp)} gem serving ${p.disp}.`
+    ]);
+  }
+  
+  // Food + Nature
+  if (p.isFood && s?.isNature) {
+    return pickOne([
+      `${capitalize(p.disp)} with ${s.disp}.`,
+      `${capitalize(s.disp)} setting, ${p.disp}.`
+    ]);
+  }
+  
+  // Atmosphere + Food
+  if (p.isAtmos && s?.isFood) {
+    return pickOne([
+      `${capitalize(s.disp)} in ${article(p.disp)} ${p.disp}.`,
+      `${capitalize(p.disp)} spot with ${s.disp}.`,
+      `The ${p.disp} kind of place with ${s.disp}.`
+    ]);
+  }
+  
+  // Atmosphere + Location
+  if (p.isAtmos && s?.isLoc) {
+    return pickOne([
+      `${capitalize(p.disp)} ${s.disp}.`,
+      `${capitalize(p.disp)} and ${s.disp}.`,
+      `A ${p.disp} spot in ${article(s.disp)} ${s.disp}.`
+    ]);
+  }
+  
+  // Location + Food
+  if (p.isLoc && s?.isFood) {
+    return pickOne([
+      `${capitalize(s.disp)} in ${article(p.disp)} ${p.disp}.`,
+      `${capitalize(p.disp)} spot for ${s.disp}.`
+    ]);
+  }
+  
+  // Nature + Food
+  if (p.isNature && s?.isFood) {
+    return pickOne([
+      `${capitalize(s.disp)} with ${p.disp}.`,
+      `${capitalize(p.disp)} and ${s.disp}.`
+    ]);
+  }
+  
+  // Crowd + Food
+  if (p.isCrowd && s?.isFood) {
+    return pickOne([
+      `Where ${p.disp} go for ${s.disp}.`,
+      `${capitalize(s.disp)} for the ${p.disp} crowd.`,
+      `${capitalize(p.disp)} territory with ${s.disp}.`
+    ]);
+  }
+  
+  // Food + Crowd
+  if (p.isFood && s?.isCrowd) {
+    return pickOne([
+      `${capitalize(p.disp)} that draws ${s.disp}.`,
+      `${capitalize(s.disp)} love this spot for ${p.disp}.`
+    ]);
+  }
+  
+  // Single signal fallbacks - varied and natural
+  if (p.isFood) {
+    return pickOne([
+      `${capitalize(p.disp)} that lives up to the hype.`,
+      `Famous for ${p.disp}.`,
+      `The ${p.disp} locals keep coming back for.`,
+      `${capitalize(p.disp)} worth the trip.`,
+      `You come here for the ${p.disp}.`
+    ]);
+  }
+  
+  if (p.isAtmos) {
+    return pickOne([
+      `${capitalize(p.disp)} personified.`,
+      `Pure ${p.disp}.`,
+      `The ${p.disp} you're looking for.`,
+      `${capitalize(p.disp)} — simple as that.`
+    ]);
+  }
+  
+  if (p.isLoc) {
+    return pickOne([
+      `${capitalize(p.disp)} — worth finding.`,
+      `The ${p.disp} kind of place.`,
+      `${capitalize(p.disp)} and worth the search.`
+    ]);
+  }
+  
+  if (p.isNature) {
+    return pickOne([
+      `${capitalize(p.disp)} — period.`,
+      `The ${p.disp} you need.`,
+      `${capitalize(p.disp)} that hits different.`
+    ]);
+  }
+  
+  if (p.isCrowd) {
+    return pickOne([
+      `${capitalize(p.disp)} go-to.`,
+      `${capitalize(p.disp)} territory.`,
+      `Where ${p.disp} hang.`
+    ]);
+  }
+  
+  // Generic fallback
+  return pickOne([
+    `${capitalize(p.disp)} done right.`,
+    `A solid choice for ${p.disp}.`,
+    `${capitalize(p.disp)} — enough said.`,
+    `The ${p.disp} locals whisper about.`
+  ]);
 }
 
 /**
- * Generate a unique sentence based on the top signals
+ * Utility: Pick a random item from array
  */
-function generateUniqueSentence(topSignals) {
-  if (topSignals.length === 0) {
-    return 'Come here if you want to discover a local favorite.';
-  }
-  
-  const signals = topSignals.slice(0, 3);
-  const top = signals[0];
-  const second = signals[1];
-  const third = signals[2];
-  
-  // Try to create meaningful combinations
-  if (top.category === 'food_quality' && second?.category === 'atmosphere') {
-    return `Come here if you want ${top.display} in ${second.article} ${second.display}.`;
-  }
-  
-  if (top.category === 'food_quality' && second?.category === 'location') {
-    return `Come here if you want ${top.display} with ${second.article} ${second.display}.`;
-  }
-  
-  if (top.category === 'atmosphere' && second?.category === 'food_quality') {
-    return `Come here if you want ${second.display} in ${top.article} ${top.display}.`;
-  }
-  
-  if (top.category === 'atmosphere' && second?.category === 'location') {
-    return `Come here if you want ${top.display} in ${second.article} ${second.display}.`;
-  }
-  
-  if (top.category === 'nature' && second?.category === 'food_quality') {
-    return `Come here if you want ${second.display} with ${top.display}.`;
-  }
-  
-  if (top.category === 'location' && second?.category === 'food_quality') {
-    return `Come here if you want ${second.display} in ${top.article} ${top.display}.`;
-  }
-  
-  if (top.category === 'crowd' && second?.category === 'food_quality') {
-    return `Come here if you want ${second.display} in ${top.article} ${top.display}.`;
-  }
-  
-  if (top.category === 'food_quality' && second?.category === 'crowd') {
-    return `Come here if you want ${top.display} in ${second.article} ${second.display}.`;
-  }
-  
-  if (top.category === 'service' && second?.category === 'food_quality') {
-    return `Come here if you want ${second.display} with ${top.display}.`;
-  }
-  
-  if (top.category === 'food_quality' && second?.category === 'service') {
-    return `Come here if you want ${top.display} with ${second.display}.`;
-  }
-  
-  // Three-signal combination
-  if (signals.length >= 3) {
-    const parts = signals.map(s => s.article ? `${s.article} ${s.display}` : s.display);
-    return `Come here if you want ${parts[0]}, ${parts[1]} and ${parts[2]}.`;
-  }
-  
-  // Two-signal fallback
-  if (signals.length === 2) {
-    const first = top.article ? `${top.article} ${top.display}` : top.display;
-    const secondStr = second.article ? `${second.article} ${second.display}` : second.display;
-    return `Come here if you want ${first} and ${secondStr}.`;
-  }
-  
-  // Single signal fallback
-  const display = top.article ? `${top.article} ${top.display}` : top.display;
-  return `Come here if you want ${display}.`;
+function pickOne(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+/**
+ * Utility: Capitalize first letter
+ */
+function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+/**
+ * Utility: Get appropriate article
+ */
+function article(str) {
+  const vowels = ['a', 'e', 'i', 'o', 'u'];
+  return vowels.includes(str.charAt(0).toLowerCase()) ? 'an' : 'a';
 }
 
 /**
@@ -315,10 +405,8 @@ function generateTagsFromSignals(topSignals) {
   for (const signal of topSignals) {
     if (tags.length >= 3) break;
     
-    // Skip if we already have a tag from this category
     if (usedCategories.has(signal.category)) continue;
     
-    // Format tag nicely
     let tag = signal.display;
     tag = tag.split(' ')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -328,7 +416,6 @@ function generateTagsFromSignals(topSignals) {
     usedCategories.add(signal.category);
   }
   
-  // Ensure at least one tag
   if (tags.length === 0) {
     tags.push('Local Favorite');
   }
