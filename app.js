@@ -969,7 +969,6 @@ function toggleVibe(vibeId) {
     }
   }
 }
-}
 
 // Select category
 function selectCategory(category) {
