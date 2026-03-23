@@ -4,14 +4,22 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
 // Determine which database to use
-const usePostgres = process.env.DATABASE_URL || process.env.PGDATABASE;
+const usePostgres = () => !!(process.env.DATABASE_URL || process.env.PGDATABASE);
 let pgPool = null;
+
+// Debug logging
+console.log('📊 Database config check:');
+console.log('   DATABASE_URL present:', !!process.env.DATABASE_URL);
+console.log('   PGDATABASE present:', !!process.env.PGDATABASE);
+console.log('   NODE_ENV:', process.env.NODE_ENV);
 
 // Initialize database connection
 async function initDatabase() {
-  if (usePostgres) {
+  if (usePostgres()) {
+    console.log('🔌 Using PostgreSQL database');
     return initPostgres();
   } else {
+    console.log('📁 Using SQLite database');
     return initSQLite();
   }
 }
@@ -164,7 +172,7 @@ function initSQLite() {
 // ========== QUERY HELPERS ==========
 
 async function getAllPlaces(db) {
-  if (usePostgres) {
+  if (usePostgres()) {
     const result = await db.query(`
       SELECT p.*, w.sentence as why_sentence, w.tags as why_tags, w.last_generated_at
       FROM places p
@@ -205,7 +213,7 @@ async function getAllPlaces(db) {
 }
 
 async function getPlaceById(db, id) {
-  if (usePostgres) {
+  if (usePostgres()) {
     const placeResult = await db.query(`
       SELECT p.*, w.sentence as why_sentence, w.tags as why_tags, w.last_generated_at
       FROM places p
@@ -274,7 +282,7 @@ async function getPlaceById(db, id) {
 async function upsertPlace(db, place) {
   const { id, name, category, description, area, maps, lat, lng, rating, address, phone, website, hours, google_place_id, vibes } = place;
   
-  if (usePostgres) {
+  if (usePostgres()) {
     await db.query(`
       INSERT INTO places (id, name, category, description, area, maps, lat, lng, rating, address, phone, website, hours, google_place_id, vibes)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
@@ -324,7 +332,7 @@ async function upsertPlace(db, place) {
 }
 
 async function deletePlace(db, id) {
-  if (usePostgres) {
+  if (usePostgres()) {
     await db.query('DELETE FROM places WHERE id = $1', [id]);
   } else {
     return new Promise((resolve, reject) => {
@@ -337,7 +345,7 @@ async function deletePlace(db, id) {
 }
 
 async function addReview(db, placeId, review) {
-  if (usePostgres) {
+  if (usePostgres()) {
     await db.query(`
       INSERT INTO reviews (place_id, text, rating, author, time)
       VALUES ($1, $2, $3, $4, $5)
@@ -357,7 +365,7 @@ async function addReview(db, placeId, review) {
 }
 
 async function addPhoto(db, placeId, photo) {
-  if (usePostgres) {
+  if (usePostgres()) {
     await db.query(`
       INSERT INTO photos (place_id, url, html_attributions, reference, width, height)
       VALUES ($1, $2, $3, $4, $5, $6)
@@ -376,7 +384,7 @@ async function addPhoto(db, placeId, photo) {
 }
 
 async function getWhyThisPlace(db, placeId) {
-  if (usePostgres) {
+  if (usePostgres()) {
     const result = await db.query('SELECT * FROM why_this_place WHERE place_id = $1', [placeId]);
     if (result.rows.length === 0) return null;
     const row = result.rows[0];
@@ -401,7 +409,7 @@ async function getWhyThisPlace(db, placeId) {
 }
 
 async function setWhyThisPlace(db, placeId, sentence, tags) {
-  if (usePostgres) {
+  if (usePostgres()) {
     await db.query(`
       INSERT INTO why_this_place (place_id, sentence, tags, last_generated_at)
       VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
@@ -428,7 +436,7 @@ async function setWhyThisPlace(db, placeId, sentence, tags) {
 }
 
 async function getAllPlacesWithWhy(db) {
-  if (usePostgres) {
+  if (usePostgres()) {
     const result = await db.query(`
       SELECT p.*, w.sentence, w.tags as why_tags
       FROM places p
