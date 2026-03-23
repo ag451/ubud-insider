@@ -179,11 +179,22 @@ async function getAllPlaces(db) {
       LEFT JOIN why_this_place w ON p.id = w.place_id
       ORDER BY p.id
     `);
-    return result.rows.map(row => ({
-      ...row,
-      vibes: row.vibes || [],
-      why_tags: row.why_tags || []
-    }));
+    return result.rows.map(row => {
+      const place = {
+        ...row,
+        vibes: row.vibes || [],
+        why_tags: row.why_tags || []
+      };
+      // Create why_this_place object for frontend
+      if (row.why_sentence) {
+        place.why_this_place = {
+          sentence: row.why_sentence,
+          tags: row.why_tags || [],
+          last_generated_at: row.last_generated_at
+        };
+      }
+      return place;
+    });
   } else {
     // SQLite
     return new Promise((resolve, reject) => {
