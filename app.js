@@ -186,7 +186,8 @@ function setupEventListeners() {
     if (!searchBox) return;
     
     const rect = searchBox.getBoundingClientRect();
-    const dropdownTop = rect.bottom + window.scrollY + 8;
+    // For fixed positioning, use viewport coordinates only (no scrollY)
+    const dropdownTop = rect.bottom + 8;
     
     // On mobile, use full width with margins
     // On desktop, center align with the container
