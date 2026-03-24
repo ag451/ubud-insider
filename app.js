@@ -1013,6 +1013,11 @@ function selectCategory(category) {
   } else {
     updateMapMarkers();
   }
+  
+  // Also update inline map if visible (desktop)
+  if (window.inlineMap) {
+    updateInlineMapMarkers();
+  }
 }
 
 // Render map category buttons
@@ -1039,6 +1044,9 @@ function renderMapCategories() {
     mapSearchInput.addEventListener('input', (e) => {
       searchTerm = e.target.value.toLowerCase();
       updateMapMarkers();
+      if (window.inlineMap) {
+        updateInlineMapMarkers();
+      }
     });
   }
 }
