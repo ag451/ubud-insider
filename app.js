@@ -1156,6 +1156,9 @@ function renderPlaces() {
           ${place.area ? `<span class="area-tag">📍 ${escapeHtml(place.area)}</span>` : ''}
           ${place.distance ? `<span class="distance-tag">${place.distance.toFixed(1)} km</span>` : ''}
           ${place.rating ? `<span class="place-rating"><span class="star">★</span> ${place.rating}</span>` : ''}
+        </div>
+        
+        <div class="place-vibes-row">
           ${renderVibeTags(place.vibes)}
         </div>
         

@@ -508,8 +508,21 @@ body {
 .place-meta {
     display: flex;
     gap: 8px;
-    margin-bottom: 12px;
     flex-wrap: wrap;
+}
+
+/* Desktop: reduce margin since vibes are now absolute positioned */
+@media (min-width: 769px) {
+    .place-meta {
+        margin-bottom: 8px;
+    }
+}
+
+/* Mobile: keep original margin */
+@media (max-width: 768px) {
+    .place-meta {
+        margin-bottom: 12px;
+    }
 }
 
 .category-tag {
@@ -1339,6 +1352,38 @@ body {
     font-size: 0.6875rem;
     font-weight: 500;
     color: #a78bfa;
+}
+
+/* Vibe tags row - desktop right aligned, mobile left on new line */
+.place-vibes-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+/* Desktop: right align vibes */
+@media (min-width: 769px) {
+    .place-card {
+        position: relative;
+    }
+    
+    .place-vibes-row {
+        position: absolute;
+        top: 16px;
+        right: 56px; /* Leave room for fav button */
+        margin-bottom: 0;
+        justify-content: flex-end;
+    }
+}
+
+/* Mobile: left align on new line */
+@media (max-width: 768px) {
+    .place-vibes-row {
+        position: static;
+        justify-content: flex-start;
+        margin-bottom: 12px;
+    }
 }
 
 /* Search Dropdown - Portal-style positioning */
