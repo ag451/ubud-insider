@@ -825,6 +825,14 @@ app.post('/api/admin/update-coordinates', async (req, res) => {
         
         const data = await fetchFromGoogle(url);
         
+        // Debug: log if there's an error
+        if (data.status !== 'OK') {
+          console.log(`⚠️ ${place.name}: ${data.status} - ${data.error_message || 'No error message'}`);
+          results.failed++;
+          results.details.push({ id: place.id, name: place.name, status: 'failed', reason: `API: ${data.status}` });
+          continue;
+        }
+        
         if (data.result?.geometry?.location) {
           const { lat, lng } = data.result.geometry.location;
           
