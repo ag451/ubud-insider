@@ -83,6 +83,7 @@ async function fetchPlaceDetails(placeName, location = { lat: -8.5069, lng: 115.
             phone: detailsData.result.formatted_phone_number,
             hours: detailsData.result.opening_hours?.weekday_text?.join('\n'),
             rating: detailsData.result.rating,
+            priceLevel: detailsData.result.price_level,
             reviews: detailsData.result.reviews?.map(r => ({
                 author: r.author_name,
                 rating: r.rating,
@@ -148,6 +149,7 @@ async function batchFetchAllPlaces() {
             place.phone = details.phone;
             place.hours = details.hours;
             place.rating = details.rating;
+            place.price_level = details.priceLevel;
             place.reviews = details.reviews;
             place.photos = details.photos;
             place.website = details.website;

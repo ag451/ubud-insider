@@ -345,7 +345,7 @@ app.get('/api/places/details', async (req, res) => {
   }
   
   const fields = ['name', 'formatted_address', 'formatted_phone_number', 'opening_hours', 
-                  'rating', 'reviews', 'photos', 'website', 'url', 'geometry'];
+                  'current_opening_hours', 'price_level', 'rating', 'reviews', 'photos', 'website', 'url', 'geometry'];
   
   const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?` +
     `place_id=${placeId}&` +
@@ -580,7 +580,7 @@ app.post('/api/places/sync-vibes', async (req, res) => {
 // Helper to fetch Google Place details
 async function fetchGooglePlaceDetails(placeId) {
   const fields = ['name', 'formatted_address', 'formatted_phone_number', 'opening_hours', 
-                  'rating', 'reviews', 'photos', 'website', 'url', 'geometry'];
+                  'current_opening_hours', 'price_level', 'rating', 'reviews', 'photos', 'website', 'url', 'geometry'];
   
   const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?` +
     `place_id=${placeId}&` +
@@ -600,6 +600,98 @@ app.get('/api/places', async (req, res) => {
   } catch (err) {
     console.error('Error getting places:', err);
     res.status(500).json({ error: 'Failed to get places' });
+  }
+});
+
+// Get similar places (same category or matching vibes)
+app.get('/api/places/:id/similar', async (req, res) => {
+  try {
+    const placeId = parseInt(req.params.id);
+    const place = await getPlaceById(db, placeId);
+    
+    if (!place) {
+      return res.status(404).json({ error: 'Place not found' });
+    }
+    
+    const allPlaces = await getAllPlaces(db);
+    
+    // Score each place based on similarity
+    const scored = allPlaces
+      .filter(p => p.id !== placeId)
+      .map(p => {
+        let score = 0;
+        
+        // Same category = high score
+        if (p.category === place.category) {
+          score += 10;
+        }
+        
+        // Matching vibes
+        const placeVibes = place.vibes || [];
+        const pVibes = p.vibes || [];
+        const matchingVibes = placeVibes.filter(v => pVibes.includes(v));
+        score += matchingVibes.length * 3;
+        
+        // Same area = small bonus
+        if (p.area && place.area && p.area === place.area) {
+          score += 2;
+        }
+        
+        return { place: p, score };
+      });
+    
+    // Sort by score and take top 4
+    const similar = scored
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 4)
+      .map(item => item.place);
+    
+    res.json(similar);
+  } catch (err) {
+    console.error('Error getting similar places:', err);
+    res.status(500).json({ error: 'Failed to get similar places' });
+  }
+});
+
+// Get crowd levels for a place
+app.get('/api/places/:id/crowd', async (req, res) => {
+  try {
+    const placeId = parseInt(req.params.id);
+    const place = await getPlaceById(db, placeId);
+    
+    if (!place || !place.google_place_id) {
+      return res.status(404).json({ error: 'Place not found or no Google Place ID' });
+    }
+    
+    if (!GOOGLE_PLACES_API_KEY) {
+      return res.status(500).json({ error: 'Google Places API key not configured' });
+    }
+    
+    // Fetch from Google Places API
+    const fields = ['current_opening_hours'];
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?` +
+      `place_id=${place.google_place_id}&` +
+      `fields=${fields.join(',')}&` +
+      `key=${GOOGLE_PLACES_API_KEY}`;
+    
+    const data = await fetchFromGoogle(url);
+    
+    if (data.status !== 'OK' || !data.result) {
+      return res.status(404).json({ error: 'Could not fetch crowd data' });
+    }
+    
+    // Extract crowd data
+    const currentHours = data.result.current_opening_hours;
+    const crowdData = {
+      open_now: currentHours?.open_now,
+      periods: currentHours?.periods || [],
+      weekday_text: currentHours?.weekday_text || []
+    };
+    
+    res.json(crowdData);
+  } catch (err) {
+    console.error('Error getting crowd levels:', err);
+    res.status(500).json({ error: 'Failed to get crowd levels' });
   }
 });
 

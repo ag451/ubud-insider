@@ -50,6 +50,7 @@ async function initPostgres() {
       lat NUMERIC,
       lng NUMERIC,
       rating NUMERIC,
+      price_level INTEGER,
       address TEXT,
       phone TEXT,
       website TEXT,
@@ -119,6 +120,7 @@ function initSQLite() {
             lat REAL,
             lng REAL,
             rating REAL,
+            price_level INTEGER,
             address TEXT,
             phone TEXT,
             website TEXT,
@@ -291,12 +293,12 @@ async function getPlaceById(db, id) {
 }
 
 async function upsertPlace(db, place) {
-  const { id, name, category, description, area, maps, lat, lng, rating, address, phone, website, hours, google_place_id, vibes } = place;
+  const { id, name, category, description, area, maps, lat, lng, rating, price_level, address, phone, website, hours, google_place_id, vibes } = place;
   
   if (usePostgres()) {
     await db.query(`
-      INSERT INTO places (id, name, category, description, area, maps, lat, lng, rating, address, phone, website, hours, google_place_id, vibes)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      INSERT INTO places (id, name, category, description, area, maps, lat, lng, rating, price_level, address, phone, website, hours, google_place_id, vibes)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       ON CONFLICT (id) DO UPDATE SET
         name = EXCLUDED.name,
         category = EXCLUDED.category,
@@ -306,19 +308,20 @@ async function upsertPlace(db, place) {
         lat = EXCLUDED.lat,
         lng = EXCLUDED.lng,
         rating = EXCLUDED.rating,
+        price_level = EXCLUDED.price_level,
         address = EXCLUDED.address,
         phone = EXCLUDED.phone,
         website = EXCLUDED.website,
         hours = EXCLUDED.hours,
         google_place_id = EXCLUDED.google_place_id,
         vibes = EXCLUDED.vibes
-    `, [id, name, category, description, area, maps, lat, lng, rating, address, phone, website, hours, google_place_id, JSON.stringify(vibes || [])]);
+    `, [id, name, category, description, area, maps, lat, lng, rating, price_level, address, phone, website, hours, google_place_id, JSON.stringify(vibes || [])]);
   } else {
     // SQLite
     return new Promise((resolve, reject) => {
       db.run(`
-        INSERT INTO places (id, name, category, description, area, maps, lat, lng, rating, address, phone, website, hours, google_place_id, vibes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO places (id, name, category, description, area, maps, lat, lng, rating, price_level, address, phone, website, hours, google_place_id, vibes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           name = excluded.name,
           category = excluded.category,
@@ -328,13 +331,14 @@ async function upsertPlace(db, place) {
           lat = excluded.lat,
           lng = excluded.lng,
           rating = excluded.rating,
+          price_level = excluded.price_level,
           address = excluded.address,
           phone = excluded.phone,
           website = excluded.website,
           hours = excluded.hours,
           google_place_id = excluded.google_place_id,
           vibes = excluded.vibes
-      `, [id, name, category, description, area, maps, lat, lng, rating, address, phone, website, hours, google_place_id, JSON.stringify(vibes || [])], function(err) {
+      `, [id, name, category, description, area, maps, lat, lng, rating, price_level, address, phone, website, hours, google_place_id, JSON.stringify(vibes || [])], function(err) {
         if (err) reject(err);
         else resolve();
       });

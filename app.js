@@ -53,6 +53,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   updateFavCount();
   setupEventListeners();
   // Map is initialized on demand when user switches to map view
+  
+  // Check for share URL parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  const sharedPlaceId = urlParams.get('place');
+  if (sharedPlaceId) {
+    setTimeout(() => {
+      openPlaceModal(parseInt(sharedPlaceId));
+      // Clear the URL parameter without reloading
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }, 500);
+  }
 });
 
 // Setup event listeners
@@ -1217,6 +1228,7 @@ function renderPlaces() {
           ${place.area ? `<span class="area-tag">📍 ${escapeHtml(place.area)}</span>` : ''}
           ${place.distance ? `<span class="distance-tag">${place.distance.toFixed(1)} km</span>` : ''}
           ${place.rating ? `<span class="place-rating"><span class="star">★</span> ${place.rating}</span>` : ''}
+          ${renderPriceLevel(place.price_level)}
         </div>
         
         <div class="place-vibes-row">
@@ -1250,6 +1262,13 @@ function renderVibeTags(vibes) {
   }).join('');
 }
 
+// Helper function to render price level indicator
+function renderPriceLevel(priceLevel) {
+  if (!priceLevel) return '';
+  const dollars = '$'.repeat(priceLevel);
+  return `<span class="price-tag">${dollars}</span>`;
+}
+
 // Open place detail modal
 function openPlaceModal(placeId) {
   const place = UBUD_DATA.places.find(p => p.id === placeId);
@@ -1265,6 +1284,7 @@ function openPlaceModal(placeId) {
       <div class="modal-meta">
         <span class="category-tag">${category?.name || place.category}</span>
         ${place.area ? `<span class="area-tag">📍 ${escapeHtml(place.area)}</span>` : ''}
+        ${renderPriceLevel(place.price_level)}
         <button class="fav-btn ${isFav ? 'active' : ''}" onclick="toggleFavorite(${place.id}); updateModalFav(${place.id})" style="position: static; margin-left: auto;">
           ${isFav ? '⭐' : '☆'}
         </button>
@@ -1293,6 +1313,11 @@ function openPlaceModal(placeId) {
         <div class="rating-stars">${'★'.repeat(Math.floor(place.rating))}${'☆'.repeat(5 - Math.floor(place.rating))} ${place.rating}/5</div>
       </div>
     ` : ''}
+    
+    <div class="modal-section" id="crowdSection" style="display: none;">
+      <div class="modal-section-title">Current Status</div>
+      <div id="crowdContent"></div>
+    </div>
     
     ${place.address ? `
       <div class="modal-section">
@@ -1330,13 +1355,25 @@ function openPlaceModal(placeId) {
       </div>
     ` : ''}
     
-    <div class="modal-section" style="margin-top: 24px;">
+    <div class="modal-section" id="similarPlacesSection" style="display: none;">
+      <div class="modal-section-title">Similar Places</div>
+      <div id="similarPlacesContent" class="similar-places-grid"></div>
+    </div>
+    
+    <div class="modal-section" style="margin-top: 24px; display: flex; gap: 12px;">
+      <button onclick="sharePlace(${place.id})" class="details-btn" style="flex: 1;">
+        📤 Share
+      </button>
       ${getGoogleMapsLink(place)}
     </div>
   `;
   
   document.getElementById('placeModal').style.display = 'flex';
   document.body.style.overflow = 'hidden';
+  
+  // Load similar places and crowd data
+  loadSimilarPlaces(placeId);
+  loadCrowdData(placeId);
 }
 
 // Helper function to generate Google Maps link
@@ -1418,6 +1455,96 @@ function getCardMapsLink(place) {
 // Update modal favorite button
 function updateModalFav(placeId) {
   setTimeout(() => openPlaceModal(placeId), 50);
+}
+
+// Share place function
+async function sharePlace(placeId) {
+  const place = UBUD_DATA.places.find(p => p.id === placeId);
+  if (!place) return;
+  
+  const shareUrl = `${window.location.origin}${window.location.pathname}?place=${placeId}`;
+  const shareData = {
+    title: `${place.name} | Ubud Insider`,
+    text: `Check out ${place.name} on Ubud Insider!`,
+    url: shareUrl
+  };
+  
+  try {
+    if (navigator.share) {
+      await navigator.share(shareData);
+    } else {
+      // Fallback: copy to clipboard
+      await navigator.clipboard.writeText(shareUrl);
+      alert('Link copied to clipboard!');
+    }
+  } catch (err) {
+    console.error('Share failed:', err);
+    // Fallback on error
+    await navigator.clipboard.writeText(shareUrl);
+    alert('Link copied to clipboard!');
+  }
+}
+
+// Load similar places for modal
+async function loadSimilarPlaces(placeId) {
+  try {
+    const response = await fetch(`/api/places/${placeId}/similar`);
+    if (!response.ok) return;
+    
+    const places = await response.json();
+    if (places.length === 0) return;
+    
+    const container = document.getElementById('similarPlacesContent');
+    const section = document.getElementById('similarPlacesSection');
+    
+    if (!container || !section) return;
+    
+    container.innerHTML = places.map(p => {
+      const category = UBUD_DATA.categories.find(c => c.id === p.category);
+      return `
+        <div class="similar-place-card" onclick="openPlaceModal(${p.id})" style="cursor: pointer;">
+          <div class="similar-place-icon">${category?.icon || '📍'}</div>
+          <div class="similar-place-name">${escapeHtml(p.name)}</div>
+          <div class="similar-place-category">${category?.name || p.category}</div>
+        </div>
+      `;
+    }).join('');
+    
+    section.style.display = 'block';
+  } catch (err) {
+    console.error('Error loading similar places:', err);
+  }
+}
+
+// Load crowd data for modal
+async function loadCrowdData(placeId) {
+  try {
+    const response = await fetch(`/api/places/${placeId}/crowd`);
+    if (!response.ok) return;
+    
+    const data = await response.json();
+    const container = document.getElementById('crowdContent');
+    const section = document.getElementById('crowdSection');
+    
+    if (!container || !section) return;
+    
+    const status = data.open_now ? 
+      '<span style="color: #22c55e;">● Open now</span>' : 
+      '<span style="color: #ef4444;">● Closed</span>';
+    
+    container.innerHTML = `
+      <div style="margin-bottom: 8px; font-weight: 500;">${status}</div>
+      ${data.weekday_text ? `
+        <div style="font-size: 0.85rem; color: var(--text-secondary);">
+          ${data.weekday_text.join('<br>')}
+        </div>
+      ` : ''}
+    `;
+    
+    section.style.display = 'block';
+  } catch (err) {
+    console.error('Error loading crowd data:', err);
+  }
 }
 
 // Close modal
