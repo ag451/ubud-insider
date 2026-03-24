@@ -375,14 +375,14 @@
             <div style="border-top: 1px solid var(--border); margin: 32px 0;"></div>
             
             <div class="form-group">
-                <h3 style="margin-bottom: 16px; font-size: 1.125rem;">🎭 Sync Vibes</h3>
+                <h3 style="margin-bottom: 16px; font-size: 1.125rem;">📍 Update Coordinates</h3>
                 <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 0.875rem;">
-                    Sync vibe tags from data.js to the database. Run this after updating vibe tags in data.js.
+                    Fetch accurate coordinates from Google Places API for all places. This updates lat/lng to precise locations.
                 </p>
-                <button id="vibesBtn" class="btn-primary" onclick="syncVibes()">
-                    🎭 Sync Vibes to Database
+                <button id="coordsBtn" class="btn-primary" onclick="updateCoordinates()">
+                    📍 Update All Coordinates
                 </button>
-                <div id="vibesProgress" style="margin-top: 12px; font-size: 0.875rem; color: var(--text-secondary);"></div>
+                <div id="coordsProgress" style="margin-top: 12px; font-size: 0.875rem; color: var(--text-secondary);"></div>
             </div>
         </div>
     </div>
@@ -867,6 +867,43 @@
             } finally {
                 btn.disabled = false;
                 btn.textContent = '🎭 Sync Vibes to Database';
+            }
+        }
+        
+        // Update coordinates from Google Places API
+        async function updateCoordinates() {
+            const btn = document.getElementById('coordsBtn');
+            const progress = document.getElementById('coordsProgress');
+            btn.disabled = true;
+            btn.textContent = '📍 Updating...';
+            progress.textContent = 'Fetching coordinates from Google Places...';
+            
+            try {
+                const response = await fetch('/api/admin/update-coordinates', {
+                    method: 'POST'
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to update coordinates');
+                }
+                
+                const data = await response.json();
+                
+                let message = `✅ Updated: ${data.updated} | Skipped: ${data.skipped} | Failed: ${data.failed}`;
+                showAlert('toolsAlert', message, data.failed > 0 ? 'error' : 'success');
+                progress.textContent = 'Coordinates updated successfully! Refresh the map to see changes.';
+                
+                // Log details to console
+                console.log('Coordinate update details:', data.details);
+                
+            } catch (err) {
+                console.error('Coordinates update error:', err);
+                showAlert('toolsAlert', '❌ Update failed: ' + err.message, 'error');
+                progress.textContent = '';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '📍 Update All Coordinates';
             }
         }
     </script>
