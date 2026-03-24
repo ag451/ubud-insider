@@ -765,6 +765,20 @@ function updateInlineMapMarkers() {
       `);
   });
   
+  // Add user location marker (blue dot)
+  if (userLocation && userLocation.lat && userLocation.lng) {
+    const userIcon = L.divIcon({
+      className: 'user-location-marker',
+      html: `<div style="width: 16px; height: 16px; background: #3b82f6; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 2px #3b82f6, 0 2px 8px rgba(0,0,0,0.4);"></div>`,
+      iconSize: [16, 16],
+      iconAnchor: [8, 8]
+    });
+    
+    L.marker([userLocation.lat, userLocation.lng], { icon: userIcon })
+      .addTo(window.inlineMap)
+      .bindPopup('<div style="font-family: Inter, sans-serif; font-weight: 500;">📍 Your Location</div>');
+  }
+  
   // Fit bounds if we have markers
   const markers = [];
   window.inlineMap.eachLayer(layer => {
@@ -862,6 +876,37 @@ function updateMapMarkers() {
       markers.push(marker);
     });
     
+    // Add user location marker (blue dot)
+    if (userLocation && userLocation.lat && userLocation.lng) {
+      const userMarker = new google.maps.Marker({
+        position: { lat: userLocation.lat, lng: userLocation.lng },
+        map: map,
+        title: 'Your Location',
+        icon: {
+          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+            `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
+              <circle cx="10" cy="10" r="8" fill="#3b82f6" stroke="#fff" stroke-width="3"/>
+              <circle cx="10" cy="10" r="8" fill="none" stroke="#3b82f6" stroke-width="1"/>
+            </svg>`
+          )}`,
+          scaledSize: new google.maps.Size(20, 20),
+          anchor: new google.maps.Point(10, 10)
+        }
+      });
+      
+      const userInfoWindow = new google.maps.InfoWindow({
+        content: `<div style="font-family: Inter, sans-serif; font-weight: 500; padding: 4px;">📍 Your Location</div>`
+      });
+      
+      userMarker.addListener('click', () => {
+        if (window.currentInfoWindow) window.currentInfoWindow.close();
+        window.currentInfoWindow = userInfoWindow;
+        userInfoWindow.open(map, userMarker);
+      });
+      
+      markers.push(userMarker);
+    }
+    
     if (markers.length > 0) {
       const bounds = new google.maps.LatLngBounds();
       markers.forEach(marker => bounds.extend(marker.getPosition()));
@@ -901,6 +946,22 @@ function updateMapMarkers() {
       
       markers.push(marker);
     });
+    
+    // Add user location marker (blue dot)
+    if (userLocation && userLocation.lat && userLocation.lng) {
+      const userIcon = L.divIcon({
+        className: 'user-location-marker',
+        html: `<div style="width: 16px; height: 16px; background: #3b82f6; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 2px #3b82f6, 0 2px 8px rgba(0,0,0,0.4);"></div>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+      });
+      
+      const userMarker = L.marker([userLocation.lat, userLocation.lng], { icon: userIcon })
+        .addTo(map)
+        .bindPopup('<div style="font-family: Inter, sans-serif; font-weight: 500;">📍 Your Location</div>');
+      
+      markers.push(userMarker);
+    }
     
     if (markers.length > 0) {
       const group = new L.featureGroup(markers);
