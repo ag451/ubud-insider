@@ -80,6 +80,11 @@ function generateDescriptionBasedWhy(place) {
       `Wellness spot in ${area} that takes the work seriously. Results speak for themselves.`,
       `Alternative healing in ${area} worth exploring. The practitioners are the real deal.`
     ],
+    spa: [
+      `${name} delivers proper Balinese massage without the resort markup. Skilled hands, peaceful setting.`,
+      `The kind of massage spot locals recommend to friends visiting Ubud. Consistent and fairly priced.`,
+      `Tucked away in ${area}, this spa offers genuine relaxation. Book the longer session—you'll need it.`
+    ],
     massage: [
       `Massage spot in ${area} that knows how to fix tired muscles. Skip the fancy spas.`,
       `Bodywork in ${area} done right. You'll walk out feeling like a new person.`,
@@ -111,6 +116,25 @@ function generateDescriptionBasedWhy(place) {
   }
   
   return template;
+}
+
+// Helper: Get default vibes based on category
+function getDefaultVibesForCategory(category) {
+  const vibeMap = {
+    breakfast: ['social', 'aesthetic'],
+    dinner: ['romantic', 'social', 'aesthetic'],
+    vegetarian: ['calm', 'aesthetic'],
+    warung: ['local', 'social'],
+    finedining: ['luxury', 'romantic', 'aesthetic'],
+    drinks: ['lively', 'social'],
+    yoga: ['spiritual', 'calm'],
+    healers: ['spiritual', 'calm'],
+    spa: ['calm', 'aesthetic'],
+    walks: ['nature', 'calm'],
+    excursions: ['nature', 'aesthetic']
+  };
+  
+  return vibeMap[category] || ['calm'];
 }
 
 // Helper: Generate tags from place data
@@ -621,6 +645,12 @@ app.post('/api/places', async (req, res) => {
     if (!place.id) {
       const places = await getAllPlaces(db);
       place.id = Math.max(...places.map(p => p.id), 0) + 1;
+    }
+    
+    // Auto-assign vibes based on category if none provided
+    if (!place.vibes || place.vibes.length === 0) {
+      place.vibes = getDefaultVibesForCategory(place.category);
+      console.log(`🎭 Auto-assigned vibes for ${place.name}: ${place.vibes.join(', ')}`);
     }
     
     await upsertPlace(db, place);
