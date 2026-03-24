@@ -812,38 +812,39 @@ app.post('/api/admin/update-coordinates', async (req, res) => {
     const results = { updated: 0, failed: 0, skipped: 0, details: [] };
     
     for (const place of places) {
-      // Skip if no google_place_id
-      if (!place.google_place_id) {
-        results.skipped++;
-        results.details.push({ id: place.id, name: place.name, status: 'skipped', reason: 'no google_place_id' });
-        continue;
-      }
-      
       try {
-        // Fetch from Google Places API
-        const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.google_place_id}&fields=geometry&key=${GOOGLE_PLACES_API_KEY}`;
+        // Step 1: Search for place by name to get fresh place_id
+        const searchUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?` +
+          `input=${encodeURIComponent(place.name + ', Ubud, Bali')}&` +
+          `inputtype=textquery&` +
+          `fields=place_id,geometry&` +
+          `key=${GOOGLE_PLACES_API_KEY}`;
         
-        const data = await fetchFromGoogle(url);
+        const searchData = await fetchFromGoogle(searchUrl);
         
-        // Debug: log if there's an error
-        if (data.status !== 'OK') {
-          console.log(`⚠️ ${place.name}: ${data.status} - ${data.error_message || 'No error message'}`);
+        if (searchData.status !== 'OK' || !searchData.candidates || searchData.candidates.length === 0) {
+          console.log(`⚠️ ${place.name}: Search failed - ${searchData.status}`);
           results.failed++;
-          results.details.push({ id: place.id, name: place.name, status: 'failed', reason: `API: ${data.status}` });
+          results.details.push({ id: place.id, name: place.name, status: 'failed', reason: `Search: ${searchData.status}` });
           continue;
         }
         
-        if (data.result?.geometry?.location) {
-          const { lat, lng } = data.result.geometry.location;
+        const candidate = searchData.candidates[0];
+        
+        if (candidate.geometry?.location) {
+          const { lat, lng } = candidate.geometry.location;
+          const newPlaceId = candidate.place_id;
           
-          // Update in database
+          // Update in database (both coordinates and fresh place_id)
           if (db && typeof db.query === 'function') {
             // PostgreSQL
-            await db.query('UPDATE places SET lat = $1, lng = $2 WHERE id = $3', [lat, lng, place.id]);
+            await db.query('UPDATE places SET lat = $1, lng = $2, google_place_id = $3 WHERE id = $4', 
+              [lat, lng, newPlaceId, place.id]);
           } else {
             // SQLite
             await new Promise((resolve, reject) => {
-              db.run('UPDATE places SET lat = ?, lng = ? WHERE id = ?', [lat, lng, place.id], (err) => {
+              db.run('UPDATE places SET lat = ?, lng = ?, google_place_id = ? WHERE id = ?', 
+                [lat, lng, newPlaceId, place.id], (err) => {
                 if (err) reject(err);
                 else resolve();
               });
@@ -851,16 +852,17 @@ app.post('/api/admin/update-coordinates', async (req, res) => {
           }
           
           results.updated++;
-          results.details.push({ id: place.id, name: place.name, status: 'updated', lat, lng });
+          results.details.push({ id: place.id, name: place.name, status: 'updated', lat, lng, place_id: newPlaceId });
         } else {
           results.failed++;
           results.details.push({ id: place.id, name: place.name, status: 'failed', reason: 'no geometry data' });
         }
         
-        // Rate limiting - small delay
-        await new Promise(r => setTimeout(r, 100));
+        // Rate limiting - delay between requests
+        await new Promise(r => setTimeout(r, 200));
         
       } catch (err) {
+        console.error(`❌ ${place.name}:`, err.message);
         results.failed++;
         results.details.push({ id: place.id, name: place.name, status: 'failed', reason: err.message });
       }
