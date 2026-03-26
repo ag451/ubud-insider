@@ -134,10 +134,10 @@ const UBUD_DATA = {
         { id: 76, name: "Jetuwia Rice Terraces / Batukaru Coffee Estate", category: "excursions", vibes: ["nature", "local", "aesthetic"], description: "Rice terraces and coffee estate tour", area: "North Ubud", lat: -8.4500, lng: 115.3000 },
 
         // Fitness
-        { id: 82, name: "Titi Batu Club", category: "fitness", vibes: ["social", "lively", "aesthetic"], description: "High-end gym and sports club with pool, tennis courts, and fitness classes. Day passes available for gym and pool access.", area: "Town Centre", lat: -8.5095, lng: 115.2620 },
-        { id: 83, name: "Gymnasium", category: "fitness", vibes: ["deepwork", "social", "aesthetic"], description: "Premium gym with state-of-the-art equipment and personal training. Known for its motivating atmosphere and quality facilities.", area: "Town Centre", lat: -8.5070, lng: 115.2640 },
-        { id: 84, name: "Bali Eden", category: "fitness", vibes: ["nature", "calm", "spiritual"], description: "Holistic fitness and wellness center offering yoga, pilates, and strength training in a beautiful natural setting.", area: "Penestanan", lat: -8.5105, lng: 115.2590 },
-        { id: 85, name: "Rendez Fitness", category: "fitness", vibes: ["lively", "social", "deepwork"], description: "Popular gym north of Ubud with CrossFit classes, weight training, and functional fitness. Great community vibe.", area: "North Ubud", lat: -8.4800, lng: 115.2600 },
+        { id: 82, name: "Titi Batu Club", category: "fitness", vibes: ["social", "lively", "aesthetic"], description: "High-end gym and sports club with pool, tennis courts, and fitness classes. Day passes available for gym and pool access.", area: "Mas", lat: -8.4958, lng: 115.2535 },
+        { id: 83, name: "Gymnasium", category: "fitness", vibes: ["deepwork", "social", "aesthetic"], description: "Premium gym with state-of-the-art equipment and personal training. Known for its motivating atmosphere and quality facilities.", area: "North Ubud", lat: -8.5423, lng: 115.2589 },
+        { id: 84, name: "Bali Eden", category: "fitness", vibes: ["nature", "calm", "spiritual"], description: "Holistic fitness and wellness center offering yoga, pilates, and strength training in a beautiful natural setting.", area: "Mas", lat: -8.4950, lng: 115.2450 },
+        { id: 85, name: "Rendez Fitness", category: "fitness", vibes: ["lively", "social", "deepwork"], description: "Popular gym north of Ubud with CrossFit classes, weight training, and functional fitness. Great community vibe.", area: "North Ubud", lat: -8.4850, lng: 115.2700 },
         { id: 86, name: "Ubud Cross Fit", category: "fitness", vibes: ["lively", "social", "deepwork"], description: "Dedicated CrossFit box offering high-intensity workouts and strong community. Perfect for serious fitness enthusiasts.", area: "North Ubud", lat: -8.4950, lng: 115.2550 }
     ]
 };
