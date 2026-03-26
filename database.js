@@ -95,6 +95,15 @@ async function initPostgres() {
   `);
   
   console.log('✅ PostgreSQL tables ready');
+  
+  // Add price_level column if not exists (migration)
+  try {
+    await pgPool.query('ALTER TABLE places ADD COLUMN IF NOT EXISTS price_level INTEGER');
+    console.log('✅ price_level column ready');
+  } catch (e) {
+    console.log('Note: price_level column may already exist');
+  }
+  
   return pgPool;
 }
 
@@ -159,10 +168,15 @@ function initSQLite() {
             last_generated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (place_id) REFERENCES places(id) ON DELETE CASCADE
           );
+          
+          -- Migration: Add price_level column if not exists
+          ALTER TABLE places ADD COLUMN price_level INTEGER;
         `, (err) => {
           if (err) reject(err);
           else {
             console.log('✅ SQLite tables ready');
+            
+            // SQLite doesn't support IF NOT EXISTS on ADD COLUMN, so ignore error
             resolve(db);
           }
         });

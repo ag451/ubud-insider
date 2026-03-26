@@ -14,7 +14,8 @@ const UBUD_DATA = {
         { id: 'healers', name: 'Healers', icon: '💫' },
         { id: 'spa', name: 'Massage & Spa', icon: '💆' },
         { id: 'walks', name: 'Walks', icon: '🚶' },
-        { id: 'excursions', name: 'Excursions', icon: '🌄' }
+        { id: 'excursions', name: 'Excursions', icon: '🌄' },
+        { id: 'fitness', name: 'Fitness', icon: '💪' }
     ],
     
     vibes: [
@@ -130,7 +131,14 @@ const UBUD_DATA = {
         { id: 73, name: "Water Purification Ceremony", category: "excursions", vibes: ["spiritual", "local", "deepwork"], description: "Book on Airbnb with trip to shaman, or go to Tirta Empul or Sebatu. Go early to avoid crowds.", area: "Various", lat: -8.5300, lng: 115.3200 },
         { id: 74, name: "Mount Batur", category: "excursions", vibes: ["nature", "lively", "aesthetic"], description: "Sunrise Volcano Hike", area: "Mount Batur", lat: -8.2400, lng: 115.3800 },
         { id: 75, name: "Tegallang Rice Terraces", category: "excursions", vibes: ["nature", "aesthetic", "calm"], description: "Go for walk, lunch at Tis Cafe and swim. Don't need a guide.", area: "Tegallang", lat: -8.4300, lng: 115.2800 },
-        { id: 76, name: "Jetuwia Rice Terraces / Batukaru Coffee Estate", category: "excursions", vibes: ["nature", "local", "aesthetic"], description: "Rice terraces and coffee estate tour", area: "Out of Town", lat: -8.4500, lng: 115.3000 }
+        { id: 76, name: "Jetuwia Rice Terraces / Batukaru Coffee Estate", category: "excursions", vibes: ["nature", "local", "aesthetic"], description: "Rice terraces and coffee estate tour", area: "Out of Town", lat: -8.4500, lng: 115.3000 },
+
+        // Fitness
+        { id: 82, name: "Titi Batu Club", category: "fitness", vibes: ["social", "lively", "aesthetic"], description: "High-end gym and sports club with pool, tennis courts, and fitness classes. Day passes available for gym and pool access.", area: "Town Centre", lat: -8.5095, lng: 115.2620 },
+        { id: 83, name: "Gymnasium", category: "fitness", vibes: ["deepwork", "social", "aesthetic"], description: "Premium gym with state-of-the-art equipment and personal training. Known for its motivating atmosphere and quality facilities.", area: "Town Centre", lat: -8.5070, lng: 115.2640 },
+        { id: 84, name: "Bali Eden", category: "fitness", vibes: ["nature", "calm", "spiritual"], description: "Holistic fitness and wellness center offering yoga, pilates, and strength training in a beautiful natural setting.", area: "Penestanan", lat: -8.5105, lng: 115.2590 },
+        { id: 85, name: "Rendez Fitness", category: "fitness", vibes: ["lively", "social", "deepwork"], description: "Popular gym north of Ubud with CrossFit classes, weight training, and functional fitness. Great community vibe.", area: "North Ubud", lat: -8.4800, lng: 115.2600 },
+        { id: 86, name: "Ubud Cross Fit", category: "fitness", vibes: ["lively", "social", "deepwork"], description: "Dedicated CrossFit box offering high-intensity workouts and strong community. Perfect for serious fitness enthusiasts.", area: "Out of Town", lat: -8.4950, lng: 115.2550 }
     ]
 };
 

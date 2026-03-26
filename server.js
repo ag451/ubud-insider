@@ -90,6 +90,11 @@ function generateDescriptionBasedWhy(place) {
       `Bodywork in ${area} done right. You'll walk out feeling like a new person.`,
       `Therapeutic touch in ${area} at fair prices. Book extra time - you'll want it.`
     ],
+    fitness: [
+      `Gym in ${area} with serious equipment and a motivating crowd. You'll actually want to work out here.`,
+      `Training spot in ${area} where fitness people gather. Good energy, no nonsense.`,
+      `${name} keeps you accountable in ${area}. The kind of gym that becomes part of your routine.`
+    ],
     walks: [
       `Scenic walk in ${area} worth the effort. Bring water and take your time.`,
       `${area} path that rewards the curious. Early morning or late afternoon are best.`,
@@ -131,7 +136,8 @@ function getDefaultVibesForCategory(category) {
     healers: ['spiritual', 'calm'],
     spa: ['calm', 'aesthetic'],
     walks: ['nature', 'calm'],
-    excursions: ['nature', 'aesthetic']
+    excursions: ['nature', 'aesthetic'],
+    fitness: ['deepwork', 'social', 'lively']
   };
   
   return vibeMap[category] || ['calm'];
@@ -154,8 +160,10 @@ function generateTagsFromPlace(place) {
     yoga: ['Yoga', 'Wellness'],
     healers: ['Healing', 'Alternative'],
     massage: ['Massage', 'Relaxation'],
+    spa: ['Spa', 'Relaxation'],
     walks: ['Walk', 'Scenic'],
-    excursions: ['Day Trip', 'Must See']
+    excursions: ['Day Trip', 'Must See'],
+    fitness: ['Fitness', 'Gym', 'Workout']
   };
   
   if (categoryTags[category]) {
