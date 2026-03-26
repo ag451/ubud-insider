@@ -375,14 +375,14 @@
             <div style="border-top: 1px solid var(--border); margin: 32px 0;"></div>
             
             <div class="form-group">
-                <h3 style="margin-bottom: 16px; font-size: 1.125rem;">📍 Update Coordinates</h3>
+                <h3 style="margin-bottom: 16px; font-size: 1.125rem;">💰 Update Price Levels</h3>
                 <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 0.875rem;">
-                    Fetch accurate coordinates from Google Places API for all places. This updates lat/lng to precise locations.
+                    Fetch price indicators ($ to $$$$) from Google Places API for all places. This updates the price_level field.
                 </p>
-                <button id="coordsBtn" class="btn-primary" onclick="updateCoordinates()">
-                    📍 Update All Coordinates
+                <button id="priceBtn" class="btn-primary" onclick="updatePriceLevels()">
+                    💰 Update All Price Levels
                 </button>
-                <div id="coordsProgress" style="margin-top: 12px; font-size: 0.875rem; color: var(--text-secondary);"></div>
+                <div id="priceProgress" style="margin-top: 12px; font-size: 0.875rem; color: var(--text-secondary);"></div>
             </div>
         </div>
     </div>
@@ -904,6 +904,41 @@
             } finally {
                 btn.disabled = false;
                 btn.textContent = '📍 Update All Coordinates';
+            }
+        }
+        async function updatePriceLevels() {
+            const btn = document.getElementById('priceBtn');
+            const progress = document.getElementById('priceProgress');
+            btn.disabled = true;
+            btn.textContent = '💰 Updating...';
+            progress.textContent = 'Fetching price levels from Google Places...';
+
+            try {
+                const response = await fetch('/api/admin/update-price-levels', {
+                    method: 'POST'
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to update price levels');
+                }
+
+                const data = await response.json();
+
+                let message = `✅ Updated: ${data.updated} | Failed: ${data.failed}`;
+                showAlert('toolsAlert', message, data.failed > 0 ? 'error' : 'success');
+                progress.textContent = 'Price levels updated successfully! Refresh the main page to see changes.';
+
+                // Log details to console
+                console.log('Price level update details:', data.details);
+
+            } catch (err) {
+                console.error('Price levels update error:', err);
+                showAlert('toolsAlert', '❌ Update failed: ' + err.message, 'error');
+                progress.textContent = '';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '💰 Update All Price Levels';
             }
         }
     </script>

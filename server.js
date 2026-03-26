@@ -1020,6 +1020,75 @@ app.post('/api/admin/update-coordinates', async (req, res) => {
   }
 });
 
+// Update price levels from Google Places
+app.post('/api/admin/update-price-levels', async (req, res) => {
+  if (!GOOGLE_PLACES_API_KEY) {
+    return res.status(400).json({ error: 'GOOGLE_PLACES_API_KEY not configured' });
+  }
+
+  try {
+    const places = await getAllPlaces(db);
+    const results = { updated: 0, failed: 0, details: [] };
+
+    for (const place of places) {
+      try {
+        // Skip if no google_place_id
+        if (!place.google_place_id) {
+          results.failed++;
+          results.details.push({ id: place.id, name: place.name, status: 'skipped', reason: 'no google_place_id' });
+          continue;
+        }
+
+        // Fetch price_level from Google Places
+        const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?` +
+          `place_id=${place.google_place_id}&` +
+          `fields=price_level&` +
+          `key=${GOOGLE_PLACES_API_KEY}`;
+
+        const detailsData = await fetchFromGoogle(detailsUrl);
+
+        if (detailsData.status === 'OK' && detailsData.result) {
+          const priceLevel = detailsData.result.price_level;
+
+          // Update in database
+          if (db && typeof db.query === 'function') {
+            // PostgreSQL
+            await db.query('UPDATE places SET price_level = $1 WHERE id = $2',
+              [priceLevel, place.id]);
+          } else {
+            // SQLite
+            await new Promise((resolve, reject) => {
+              db.run('UPDATE places SET price_level = ? WHERE id = ?',
+                [priceLevel, place.id], (err) => {
+                if (err) reject(err);
+                else resolve();
+              });
+            });
+          }
+
+          results.updated++;
+          results.details.push({ id: place.id, name: place.name, status: 'updated', price_level: priceLevel });
+        } else {
+          results.failed++;
+          results.details.push({ id: place.id, name: place.name, status: 'failed', reason: detailsData.status });
+        }
+
+        // Rate limiting
+        await new Promise(r => setTimeout(r, 150));
+
+      } catch (err) {
+        console.error(`❌ ${place.name}:`, err.message);
+        results.failed++;
+        results.details.push({ id: place.id, name: place.name, status: 'failed', reason: err.message });
+      }
+    }
+
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ========== STATIC FILES & SPA SUPPORT ==========
 
 // Serve index.html for all routes (SPA support)
