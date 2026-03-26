@@ -960,21 +960,37 @@ app.post('/api/admin/update-coordinates', async (req, res) => {
         }
         
         const candidate = searchData.candidates[0];
+        const newPlaceId = candidate.place_id;
+        
+        // Step 2: Get additional details including price_level
+        let priceLevel = null;
+        try {
+          const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?` +
+            `place_id=${newPlaceId}&` +
+            `fields=price_level&` +
+            `key=${GOOGLE_PLACES_API_KEY}`;
+          
+          const detailsData = await fetchFromGoogle(detailsUrl);
+          if (detailsData.status === 'OK' && detailsData.result) {
+            priceLevel = detailsData.result.price_level;
+          }
+        } catch (detailsErr) {
+          console.log(`⚠️ ${place.name}: Could not fetch price_level`);
+        }
         
         if (candidate.geometry?.location) {
           const { lat, lng } = candidate.geometry.location;
-          const newPlaceId = candidate.place_id;
           
-          // Update in database (both coordinates and fresh place_id)
+          // Update in database (coordinates, place_id, and price_level)
           if (db && typeof db.query === 'function') {
             // PostgreSQL
-            await db.query('UPDATE places SET lat = $1, lng = $2, google_place_id = $3 WHERE id = $4', 
-              [lat, lng, newPlaceId, place.id]);
+            await db.query('UPDATE places SET lat = $1, lng = $2, google_place_id = $3, price_level = $4 WHERE id = $5', 
+              [lat, lng, newPlaceId, priceLevel, place.id]);
           } else {
             // SQLite
             await new Promise((resolve, reject) => {
-              db.run('UPDATE places SET lat = ?, lng = ?, google_place_id = ? WHERE id = ?', 
-                [lat, lng, newPlaceId, place.id], (err) => {
+              db.run('UPDATE places SET lat = ?, lng = ?, google_place_id = ?, price_level = ? WHERE id = ?', 
+                [lat, lng, newPlaceId, priceLevel, place.id], (err) => {
                 if (err) reject(err);
                 else resolve();
               });
@@ -982,7 +998,7 @@ app.post('/api/admin/update-coordinates', async (req, res) => {
           }
           
           results.updated++;
-          results.details.push({ id: place.id, name: place.name, status: 'updated', lat, lng, place_id: newPlaceId });
+          results.details.push({ id: place.id, name: place.name, status: 'updated', lat, lng, place_id: newPlaceId, price_level: priceLevel });
         } else {
           results.failed++;
           results.details.push({ id: place.id, name: place.name, status: 'failed', reason: 'no geometry data' });
