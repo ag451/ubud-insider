@@ -91,9 +91,12 @@ function generateDescriptionBasedWhy(place) {
       `Therapeutic touch in ${area} at fair prices. Book extra time - you'll want it.`
     ],
     fitness: [
-      `Gym in ${area} with serious equipment and a motivating crowd. You'll actually want to work out here.`,
-      `Training spot in ${area} where fitness people gather. Good energy, no nonsense.`,
-      `${name} keeps you accountable in ${area}. The kind of gym that becomes part of your routine.`
+      `The kind of place where you can lift, swim, and play tennis all in one visit. Day passes mean you can treat it like your own club without the commitment.`,
+      `Serious equipment that actually works, trainers who know what they're doing, and none of the usual gym ego. This is where you go when you're done messing around.`,
+      `Strength training surrounded by greenery and quiet. They get that fitness isn't just about lifting heavy—it's about feeling good while you do it.`,
+      `CrossFit without the attitude. The community here actually supports each other, and the coaches focus on form over ego.`,
+      `Proper box with programming that follows the real methodology. If you want the intensity without tourist-friendly modifications, this is your spot.`,
+      `Not just a gym—a proper sports club where you can spend the whole day. Pool, courts, classes, and equipment that all work the way they should.`
     ],
     walks: [
       `Scenic walk in ${area} worth the effort. Bring water and take your time.`,
