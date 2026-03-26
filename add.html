@@ -311,7 +311,15 @@
                 
                 <div class="form-group">
                     <label class="form-label">Area/Location</label>
-                    <input type="text" id="placeArea" class="form-input" placeholder="e.g., Town Centre, Penestanan">
+                    <select id="placeArea" class="form-select">
+                        <option value="">Select area...</option>
+                        <option value="Town Centre">Town Centre</option>
+                        <option value="Sayan">Sayan</option>
+                        <option value="North Ubud">North Ubud</option>
+                        <option value="Mas">Mas</option>
+                        <option value="Nyuh Kuning">Nyuh Kuning</option>
+                        <option value="Penestanan">Penestanan</option>
+                    </select>
                 </div>
                 
                 <div class="form-group">
@@ -578,7 +586,15 @@
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Area</label>
-                                    <input type="text" id="edit-area-${place.id}" class="form-input" value="${escapeHtml(place.area || '')}">
+                                    <select id="edit-area-${place.id}" class="form-select">
+                                        <option value="">Select area...</option>
+                                        <option value="Town Centre" ${place.area === 'Town Centre' ? 'selected' : ''}>Town Centre</option>
+                                        <option value="Sayan" ${place.area === 'Sayan' ? 'selected' : ''}>Sayan</option>
+                                        <option value="North Ubud" ${place.area === 'North Ubud' ? 'selected' : ''}>North Ubud</option>
+                                        <option value="Mas" ${place.area === 'Mas' ? 'selected' : ''}>Mas</option>
+                                        <option value="Nyuh Kuning" ${place.area === 'Nyuh Kuning' ? 'selected' : ''}>Nyuh Kuning</option>
+                                        <option value="Penestanan" ${place.area === 'Penestanan' ? 'selected' : ''}>Penestanan</option>
+                                    </select>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Description</label>
