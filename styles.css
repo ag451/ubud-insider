@@ -1568,3 +1568,573 @@ body {
     font-weight: 500;
     color: var(--accent-light);
 }
+
+/* ========== Itinerary Planner ========== */
+
+/* Plan count badge in the stats bar */
+.plan-count {
+    color: var(--accent-light);
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+}
+
+.plan-count:hover {
+    color: var(--accent);
+}
+
+/* "Add to plan" button on cards and modal */
+.plan-add-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.plan-add-btn:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+}
+
+.plan-add-btn.active {
+    background: var(--accent-glow);
+    border-color: var(--accent);
+    color: var(--accent-light);
+}
+
+.plan-add-btn.modal-plan-btn {
+    width: 100%;
+    margin-top: 14px;
+    padding: 12px;
+    font-size: 0.95rem;
+}
+
+/* Compact Add icon on cards (top-right, where the star used to be) */
+.plan-icon-add {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    color: var(--text-secondary);
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.plan-icon-add:hover {
+    transform: scale(1.1);
+    border-color: var(--accent);
+    color: var(--accent-light);
+}
+
+.plan-icon-add.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+}
+
+/* Plan container */
+.plan-container {
+    padding: 4px 0 24px;
+}
+
+.plan-top {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.plan-title-input {
+    flex: 1;
+    min-width: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 1.05rem;
+    font-weight: 600;
+    padding: 12px 14px;
+}
+
+.plan-title-input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+/* Day tabs */
+.plan-days {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    margin-bottom: 14px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.plan-day-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    padding: 8px 14px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.plan-day-tab:hover {
+    border-color: var(--border-light);
+    color: var(--text-primary);
+}
+
+.plan-day-tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+}
+
+.plan-day-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: var(--radius-full);
+    background: rgba(0, 0, 0, 0.25);
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.plan-day-tab:not(.active) .plan-day-count {
+    background: var(--bg-elevated);
+    color: var(--text-tertiary);
+}
+
+.plan-day-add {
+    white-space: nowrap;
+    padding: 8px 14px;
+    background: transparent;
+    border: 1px dashed var(--border-light);
+    border-radius: var(--radius-full);
+    color: var(--text-tertiary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.plan-day-add:hover {
+    color: var(--accent-light);
+    border-color: var(--accent);
+}
+
+/* Summary bar */
+.plan-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px;
+    margin-bottom: 14px;
+}
+
+.plan-summary-stats {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+.plan-summary-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.plan-summary-num {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.plan-summary-label {
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+}
+
+.plan-summary-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.plan-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 14px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.plan-btn:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+}
+
+.plan-btn.ghost:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-light);
+    color: var(--text-primary);
+}
+
+/* Plan map */
+.plan-map {
+    width: 100%;
+    height: 280px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin-bottom: 14px;
+    z-index: 0;
+}
+
+/* Numbered route markers */
+.plan-marker-pin {
+    width: 30px;
+    height: 30px;
+    background: var(--accent);
+    color: #000;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    border: 2px solid #0a0a0a;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Stops list */
+.plan-stops {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.plan-stop {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 12px 14px;
+}
+
+.plan-stop-index {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--accent-glow);
+    color: var(--accent-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.plan-stop-body {
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.plan-stop-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.plan-stop-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+}
+
+.plan-stop-noloc {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.plan-stop-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.plan-icon-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.plan-icon-btn:hover:not(:disabled) {
+    border-color: var(--border-light);
+    color: var(--text-primary);
+}
+
+.plan-icon-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.plan-icon-btn.danger:hover:not(:disabled) {
+    background: #ef4444;
+    border-color: #ef4444;
+    color: #fff;
+}
+
+.plan-move-select {
+    height: 32px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    padding: 0 6px;
+    cursor: pointer;
+    max-width: 92px;
+}
+
+/* Stops footer / remove day */
+.plan-stops-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+}
+
+.plan-remove-day {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    cursor: pointer;
+    padding: 9px 6px;
+}
+
+.plan-remove-day:hover {
+    color: #ef4444;
+}
+
+/* Empty state */
+.plan-empty {
+    text-align: center;
+    padding: 36px 20px;
+    background: var(--bg-card);
+    border: 1px dashed var(--border-light);
+    border-radius: var(--radius-lg);
+}
+
+.plan-empty-icon {
+    font-size: 2.4rem;
+    margin-bottom: 10px;
+}
+
+.plan-empty h3 {
+    margin-bottom: 6px;
+    font-size: 1.05rem;
+}
+
+.plan-empty p {
+    color: var(--text-tertiary);
+    font-size: 0.875rem;
+    margin-bottom: 16px;
+}
+
+.plan-empty-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+/* Toast notification */
+.toast {
+    position: fixed;
+    left: 50%;
+    bottom: 28px;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-full);
+    padding: 12px 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    box-shadow: var(--shadow-lg);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    z-index: 4000;
+    max-width: 90vw;
+    text-align: center;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Add-to-day popover menu */
+.add-menu {
+    position: fixed;
+    z-index: 5000;
+    min-width: 180px;
+    max-width: 240px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.add-menu-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary);
+    padding: 6px 10px 4px;
+}
+
+.add-menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    padding: 9px 10px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.add-menu-item:hover {
+    background: var(--bg-hover);
+}
+
+.add-menu-item.current {
+    color: var(--accent-light);
+}
+
+.add-menu-check {
+    color: var(--accent-light);
+    font-weight: 700;
+}
+
+.add-menu-new {
+    color: var(--text-secondary);
+    border-top: 1px solid var(--border);
+    margin-top: 2px;
+    padding-top: 11px;
+}
+
+.add-menu-item.danger {
+    color: #f87171;
+}
+
+.add-menu-item.danger:hover {
+    background: rgba(239, 68, 68, 0.12);
+}
+
+/* Saved bucket tab accent */
+.plan-day-tab.saved.active {
+    background: var(--favorite);
+    border-color: var(--favorite);
+    color: #000;
+}
+
+.plan-day-tab.saved:not(.active) {
+    border-color: var(--border-light);
+}
+
+.plan-summary-hint {
+    font-size: 0.78rem;
+    color: var(--text-tertiary);
+    align-self: center;
+}
+
+@media (min-width: 768px) {
+    .plan-map {
+        height: 340px;
+    }
+}

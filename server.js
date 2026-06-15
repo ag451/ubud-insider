@@ -12,7 +12,9 @@ const {
   importInitialData,
   getWhyThisPlace,
   setWhyThisPlace,
-  getAllPlacesWithWhy
+  getAllPlacesWithWhy,
+  createItinerary,
+  getItineraryByCode
 } = require('./database');
 const { analyzeReviews } = require('./reviewAnalyzer');
 const { exportPlaces, importFromBackup } = require('./backup');
@@ -1089,6 +1091,79 @@ app.post('/api/admin/update-price-levels', async (req, res) => {
     res.json(results);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ========== ITINERARIES (shareable trip plans) ==========
+
+// Generate a short, unambiguous share code
+function generateItineraryCode() {
+  const alphabet = 'abcdefghijkmnpqrstuvwxyz23456789'; // no l/o/0/1
+  let code = '';
+  for (let i = 0; i < 7; i++) {
+    code += alphabet[Math.floor(Math.random() * alphabet.length)];
+  }
+  return code;
+}
+
+// Save an itinerary and return a share code
+app.post('/api/itineraries', async (req, res) => {
+  try {
+    const { title, days, activeDayId } = req.body || {};
+    if (!Array.isArray(days) || days.length === 0) {
+      return res.status(400).json({ error: 'Itinerary must include at least one day' });
+    }
+
+    // Sanitize/normalize before storing (only keep what we need)
+    const safeData = {
+      title: typeof title === 'string' ? title.slice(0, 80) : 'My Ubud Trip',
+      activeDayId: activeDayId || (days[0] && days[0].id) || 'd1',
+      days: days.slice(0, 30).map((d, i) => ({
+        id: String(d.id || `d${i + 1}`),
+        label: typeof d.label === 'string' ? d.label.slice(0, 40) : `Day ${i + 1}`,
+        items: Array.isArray(d.items)
+          ? d.items
+              .filter(it => it && Number.isFinite(Number(it.placeId)))
+              .slice(0, 100)
+              .map(it => ({ placeId: Number(it.placeId) }))
+          : []
+      }))
+    };
+
+    // Retry a few times in case of a (very unlikely) code collision
+    let code;
+    let saved = false;
+    for (let attempt = 0; attempt < 5 && !saved; attempt++) {
+      code = generateItineraryCode();
+      try {
+        await createItinerary(db, code, safeData.title, safeData);
+        saved = true;
+      } catch (e) {
+        if (attempt === 4) throw e;
+      }
+    }
+
+    res.json({ code, title: safeData.title });
+  } catch (err) {
+    console.error('Error saving itinerary:', err);
+    res.status(500).json({ error: 'Failed to save itinerary' });
+  }
+});
+
+// Load a shared itinerary by code
+app.get('/api/itineraries/:code', async (req, res) => {
+  try {
+    const code = (req.params.code || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12);
+    if (!code) return res.status(400).json({ error: 'Invalid code' });
+
+    const itinerary = await getItineraryByCode(db, code);
+    if (!itinerary || !itinerary.data) {
+      return res.status(404).json({ error: 'Itinerary not found' });
+    }
+    res.json(itinerary.data);
+  } catch (err) {
+    console.error('Error loading itinerary:', err);
+    res.status(500).json({ error: 'Failed to load itinerary' });
   }
 });
 
