@@ -94,6 +94,15 @@ async function initPostgres() {
     )
   `);
   
+  await pgPool.query(`
+    CREATE TABLE IF NOT EXISTS itineraries (
+      code TEXT PRIMARY KEY,
+      title TEXT,
+      data JSONB NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  
   console.log('✅ PostgreSQL tables ready');
   
   // Add price_level column if not exists (migration)
@@ -167,6 +176,13 @@ function initSQLite() {
             tags TEXT DEFAULT '[]',
             last_generated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (place_id) REFERENCES places(id) ON DELETE CASCADE
+          );
+          
+          CREATE TABLE IF NOT EXISTS itineraries (
+            code TEXT PRIMARY KEY,
+            title TEXT,
+            data TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
           );
           
           -- Migration: Add price_level column if not exists
@@ -495,6 +511,54 @@ async function importInitialData(db, places) {
   console.log(`📥 Imported ${places.length} places`);
 }
 
+// ========== ITINERARIES (shareable trip plans) ==========
+
+async function createItinerary(db, code, title, data) {
+  const json = JSON.stringify(data);
+  if (usePostgres()) {
+    await db.query(
+      'INSERT INTO itineraries (code, title, data) VALUES ($1, $2, $3)',
+      [code, title || 'My Ubud Trip', json]
+    );
+  } else {
+    return new Promise((resolve, reject) => {
+      db.run(
+        'INSERT INTO itineraries (code, title, data) VALUES (?, ?, ?)',
+        [code, title || 'My Ubud Trip', json],
+        function (err) {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+  }
+}
+
+async function getItineraryByCode(db, code) {
+  if (usePostgres()) {
+    const result = await db.query('SELECT code, title, data, created_at FROM itineraries WHERE code = $1', [code]);
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
+    return {
+      code: row.code,
+      title: row.title,
+      // pg returns JSONB already parsed; guard for string just in case
+      data: typeof row.data === 'string' ? JSON.parse(row.data) : row.data,
+      created_at: row.created_at
+    };
+  } else {
+    return new Promise((resolve, reject) => {
+      db.get('SELECT code, title, data, created_at FROM itineraries WHERE code = ?', [code], (err, row) => {
+        if (err) { reject(err); return; }
+        if (!row) { resolve(null); return; }
+        let data;
+        try { data = JSON.parse(row.data); } catch (e) { data = null; }
+        resolve({ code: row.code, title: row.title, data, created_at: row.created_at });
+      });
+    });
+  }
+}
+
 module.exports = {
   initDatabase,
   getAllPlaces,
@@ -506,5 +570,7 @@ module.exports = {
   importInitialData,
   getWhyThisPlace,
   setWhyThisPlace,
-  getAllPlacesWithWhy
+  getAllPlacesWithWhy,
+  createItinerary,
+  getItineraryByCode
 };
