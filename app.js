@@ -8,8 +8,12 @@ let map = null;
 let markers = [];
 let userLocation = null; // { lat, lng, address }
 let whyThisPlaceCache = {}; // Cache for Why This Place data
+let planMap = null; // Leaflet map instance for the itinerary planner
 
 const API_BASE = '/api';
+
+// Itinerary planner state (device-local, mirrors favorites persistence)
+let itinerary = loadItinerary();
 
 // Load places from database
 async function loadPlacesFromDB() {
@@ -51,6 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderVibes();
   renderPlaces();
   updateFavCount();
+  updatePlanCount();
   setupEventListeners();
   // Map is initialized on demand when user switches to map view
   
@@ -63,6 +68,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Clear the URL parameter without reloading
       window.history.replaceState({}, document.title, window.location.pathname);
     }, 500);
+  }
+  
+  // Check for shared itinerary parameter (?plan=CODE)
+  const sharedPlan = urlParams.get('plan');
+  if (sharedPlan) {
+    setTimeout(() => importSharedPlan(sharedPlan), 400);
   }
 });
 
@@ -568,6 +579,14 @@ function switchView(view) {
     btn.classList.toggle('active', btn.dataset.view === view);
   });
   
+  if (view === 'plan') {
+    switchViewPlan();
+    return;
+  }
+  
+  // Leaving the plan view: hide it and restore filters
+  hidePlanView();
+  
   const isMobile = window.innerWidth <= 768;
   
   if (isMobile) {
@@ -577,6 +596,51 @@ function switchView(view) {
     // Desktop: Inline map within app
     switchViewDesktop(view);
   }
+}
+
+// Show the itinerary planner view (same layout on mobile and desktop)
+function switchViewPlan() {
+  const appContainer = document.getElementById('appContainer');
+  const mapContainer = document.getElementById('mapContainer');
+  const placesList = document.getElementById('placesList');
+  const mapInlineContainer = document.getElementById('mapInlineContainer');
+  const planContainer = document.getElementById('planContainer');
+  const categorySection = document.getElementById('categorySection');
+  const vibeSection = document.getElementById('vibeSection');
+  const emptyState = document.getElementById('emptyState');
+  
+  // Restore the app container (in case we came from the mobile map overlay)
+  if (appContainer) appContainer.style.display = 'block';
+  if (mapContainer) mapContainer.classList.remove('active');
+  
+  if (placesList) placesList.style.display = 'none';
+  if (emptyState) emptyState.style.display = 'none';
+  if (mapInlineContainer) mapInlineContainer.style.display = 'none';
+  if (categorySection) categorySection.style.display = 'none';
+  if (vibeSection) vibeSection.style.display = 'none';
+  if (planContainer) planContainer.style.display = 'block';
+  
+  if (!planMap || typeof planMap.getCenter !== 'function') {
+    initPlanMap();
+  }
+  
+  renderPlan();
+  
+  setTimeout(() => {
+    if (planMap && typeof planMap.invalidateSize === 'function') {
+      planMap.invalidateSize();
+    }
+  }, 120);
+}
+
+// Hide the planner view and restore filter sections for list/map
+function hidePlanView() {
+  const planContainer = document.getElementById('planContainer');
+  if (planContainer) planContainer.style.display = 'none';
+  const categorySection = document.getElementById('categorySection');
+  const vibeSection = document.getElementById('vibeSection');
+  if (categorySection) categorySection.style.display = '';
+  if (vibeSection) vibeSection.style.display = '';
 }
 
 // Mobile view switch - full screen overlay
@@ -1210,6 +1274,7 @@ function renderPlaces() {
   container.innerHTML = filtered.map((place, index) => {
     const category = UBUD_DATA.categories.find(c => c.id === place.category);
     const isFav = favorites.includes(place.id);
+    const inPlan = isInPlan(place.id);
     
     return `
       <article class="place-card" style="animation-delay: ${index * 0.05}s" onclick="openPlaceModal(${place.id})">
@@ -1238,6 +1303,9 @@ function renderPlaces() {
         ${renderWhyThisPlace(place.why_this_place)}
         
         <div class="card-actions">
+          <button class="plan-add-btn ${inPlan ? 'active' : ''}" onclick="event.stopPropagation(); togglePlan(${place.id})" aria-label="${inPlan ? 'Remove from trip plan' : 'Add to trip plan'}">
+            ${inPlan ? '✓ Planned' : '＋ Plan'}
+          </button>
           ${getCardMapsLink(place)}
           <button class="details-btn" onclick="event.stopPropagation(); openPlaceModal(${place.id})">
             Details →
@@ -1276,6 +1344,7 @@ function openPlaceModal(placeId) {
   
   const category = UBUD_DATA.categories.find(c => c.id === place.category);
   const isFav = favorites.includes(place.id);
+  const inPlan = isInPlan(place.id);
   
   const modalBody = document.getElementById('modalBody');
   modalBody.innerHTML = `
@@ -1289,6 +1358,9 @@ function openPlaceModal(placeId) {
           ${isFav ? '⭐' : '☆'}
         </button>
       </div>
+      <button class="plan-add-btn modal-plan-btn ${inPlan ? 'active' : ''}" onclick="togglePlan(${place.id}); updateModalFav(${place.id})">
+        ${inPlan ? '✓ In your plan' : '＋ Add to plan'}
+      </button>
     </div>
     
     <div class="modal-section">
@@ -1586,6 +1658,560 @@ function updateFavCount() {
     favCountNum.textContent = favorites.length;
   } else {
     favCountEl.style.display = 'none';
+  }
+}
+
+// ========== ITINERARY PLANNER ==========
+const ITINERARY_KEY = 'ubud_itinerary';
+
+function defaultItinerary() {
+  return {
+    title: 'My Ubud Trip',
+    activeDayId: 'd1',
+    days: [{ id: 'd1', label: 'Day 1', items: [] }]
+  };
+}
+
+// Load itinerary from localStorage with light validation
+function loadItinerary() {
+  try {
+    const raw = localStorage.getItem(ITINERARY_KEY);
+    if (!raw) return defaultItinerary();
+    const data = JSON.parse(raw);
+    if (!data || !Array.isArray(data.days) || data.days.length === 0) {
+      return defaultItinerary();
+    }
+    data.days.forEach(d => { if (!Array.isArray(d.items)) d.items = []; });
+    if (!data.activeDayId || !data.days.some(d => d.id === data.activeDayId)) {
+      data.activeDayId = data.days[0].id;
+    }
+    if (!data.title) data.title = 'My Ubud Trip';
+    return data;
+  } catch (e) {
+    return defaultItinerary();
+  }
+}
+
+function saveItinerary() {
+  try {
+    localStorage.setItem(ITINERARY_KEY, JSON.stringify(itinerary));
+  } catch (e) {
+    console.error('Could not save itinerary:', e);
+  }
+  updatePlanCount();
+}
+
+function genId(prefix) {
+  return prefix + Math.random().toString(36).slice(2, 8);
+}
+
+function getActiveDay() {
+  return itinerary.days.find(d => d.id === itinerary.activeDayId) || itinerary.days[0];
+}
+
+function planCount() {
+  return itinerary.days.reduce((sum, d) => sum + d.items.length, 0);
+}
+
+function isInPlan(placeId) {
+  return itinerary.days.some(d => d.items.some(it => it.placeId === placeId));
+}
+
+function dayOfPlace(placeId) {
+  return itinerary.days.find(d => d.items.some(it => it.placeId === placeId));
+}
+
+function getPlanPlaces(day) {
+  return day.items
+    .map(it => UBUD_DATA.places.find(p => p.id === it.placeId))
+    .filter(Boolean);
+}
+
+// ----- Day management -----
+function addDay() {
+  const day = { id: genId('d'), label: 'Day ' + (itinerary.days.length + 1), items: [] };
+  itinerary.days.push(day);
+  itinerary.activeDayId = day.id;
+  saveItinerary();
+  renderPlan();
+}
+
+function setActiveDay(id) {
+  itinerary.activeDayId = id;
+  saveItinerary();
+  renderPlan();
+}
+
+function removeDay(id) {
+  if (itinerary.days.length <= 1) {
+    itinerary.days[0].items = [];
+  } else {
+    itinerary.days = itinerary.days.filter(d => d.id !== id);
+    if (itinerary.activeDayId === id) itinerary.activeDayId = itinerary.days[0].id;
+  }
+  saveItinerary();
+  renderPlan();
+}
+
+function updatePlanTitle(value) {
+  itinerary.title = value || 'My Ubud Trip';
+  saveItinerary();
+}
+
+// ----- Item management -----
+function addToPlan(placeId, dayId) {
+  const targetId = dayId || itinerary.activeDayId;
+  const day = itinerary.days.find(d => d.id === targetId) || getActiveDay();
+  const existing = dayOfPlace(placeId);
+  if (existing && existing.id === day.id) {
+    showToast('Already in ' + day.label);
+    return;
+  }
+  if (existing) existing.items = existing.items.filter(it => it.placeId !== placeId);
+  day.items.push({ placeId });
+  saveItinerary();
+  const place = UBUD_DATA.places.find(p => p.id === placeId);
+  showToast(`Added ${place ? place.name : 'place'} to ${day.label}`);
+  refreshPlanUI();
+}
+
+function removeFromPlan(placeId, dayId) {
+  const day = itinerary.days.find(d => d.id === dayId) || dayOfPlace(placeId);
+  if (!day) return;
+  day.items = day.items.filter(it => it.placeId !== placeId);
+  saveItinerary();
+  refreshPlanUI();
+}
+
+function togglePlan(placeId) {
+  if (isInPlan(placeId)) removeFromPlan(placeId);
+  else addToPlan(placeId);
+}
+
+function moveItem(dayId, placeId, dir) {
+  const day = itinerary.days.find(d => d.id === dayId);
+  if (!day) return;
+  const idx = day.items.findIndex(it => it.placeId === placeId);
+  const next = idx + dir;
+  if (idx < 0 || next < 0 || next >= day.items.length) return;
+  const [item] = day.items.splice(idx, 1);
+  day.items.splice(next, 0, item);
+  saveItinerary();
+  renderPlan();
+}
+
+function moveItemToDay(placeId, toDayId) {
+  if (!toDayId) return;
+  const from = dayOfPlace(placeId);
+  const to = itinerary.days.find(d => d.id === toDayId);
+  if (!from || !to || from.id === to.id) return;
+  from.items = from.items.filter(it => it.placeId !== placeId);
+  to.items.push({ placeId });
+  saveItinerary();
+  renderPlan();
+}
+
+function addFavoritesToDay() {
+  if (!favorites || favorites.length === 0) {
+    showToast('No saved favorites yet');
+    return;
+  }
+  const day = getActiveDay();
+  let added = 0;
+  favorites.forEach(pid => {
+    if (!dayOfPlace(pid)) {
+      day.items.push({ placeId: pid });
+      added++;
+    }
+  });
+  saveItinerary();
+  showToast(added > 0 ? `Added ${added} favorite${added === 1 ? '' : 's'} to ${day.label}` : 'Favorites already in your plan');
+  refreshPlanUI();
+}
+
+function clearPlan() {
+  if (!confirm('Clear your entire trip plan?')) return;
+  itinerary = defaultItinerary();
+  saveItinerary();
+  renderPlan();
+}
+
+// ----- Distance / time helpers -----
+function dayDistanceKm(day) {
+  const places = getPlanPlaces(day).filter(p => p.lat && p.lng);
+  let total = 0;
+  for (let i = 1; i < places.length; i++) {
+    total += calculateDistance(places[i - 1].lat, places[i - 1].lng, places[i].lat, places[i].lng);
+  }
+  return total;
+}
+
+function formatDuration(hours) {
+  const mins = Math.round(hours * 60);
+  if (mins < 1) return '0 min';
+  if (mins < 60) return mins + ' min';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
+
+// ----- Routing -----
+function optimizeDay(dayId) {
+  const day = itinerary.days.find(d => d.id === dayId);
+  if (!day) return;
+  const places = getPlanPlaces(day);
+  const withCoords = places.filter(p => p.lat && p.lng);
+  const without = places.filter(p => !p.lat || !p.lng);
+  if (withCoords.length < 3) {
+    showToast('Add at least 3 stops with locations to optimize');
+    return;
+  }
+  const remaining = [...withCoords];
+  const ordered = [];
+  let current;
+  if (userLocation && userLocation.lat && userLocation.lng) {
+    current = { lat: userLocation.lat, lng: userLocation.lng };
+  } else {
+    current = remaining.shift();
+    ordered.push(current);
+  }
+  while (remaining.length) {
+    let bestIdx = 0;
+    let bestDist = Infinity;
+    remaining.forEach((p, i) => {
+      const d = calculateDistance(current.lat, current.lng, p.lat, p.lng);
+      if (d < bestDist) { bestDist = d; bestIdx = i; }
+    });
+    current = remaining.splice(bestIdx, 1)[0];
+    ordered.push(current);
+  }
+  day.items = [...ordered, ...without].map(p => ({ placeId: p.id }));
+  saveItinerary();
+  renderPlan();
+  showToast('Optimized ' + day.label + ' by distance');
+}
+
+function googleMapsDayUrl(day) {
+  const places = getPlanPlaces(day).filter(p => p.lat && p.lng);
+  if (places.length === 0) return null;
+  const coord = p => `${p.lat},${p.lng}`;
+  const hasUser = !!(userLocation && userLocation.lat && userLocation.lng);
+  const origin = hasUser ? `${userLocation.lat},${userLocation.lng}` : coord(places[0]);
+  const destination = coord(places[places.length - 1]);
+  const middle = hasUser ? places.slice(0, -1) : places.slice(1, -1);
+  let url = 'https://www.google.com/maps/dir/?api=1' +
+    `&origin=${encodeURIComponent(origin)}` +
+    `&destination=${encodeURIComponent(destination)}` +
+    '&travelmode=walking';
+  if (middle.length) {
+    url += `&waypoints=${encodeURIComponent(middle.map(coord).join('|'))}`;
+  }
+  return url;
+}
+
+function openDayInMaps(dayId) {
+  const day = itinerary.days.find(d => d.id === dayId);
+  const url = day && googleMapsDayUrl(day);
+  if (!url) {
+    showToast('Add stops with locations first');
+    return;
+  }
+  window.open(url, '_blank', 'noopener');
+}
+
+// ----- Rendering -----
+function refreshPlanUI() {
+  updatePlanCount();
+  if (currentView === 'plan') {
+    renderPlan();
+  } else if (currentView === 'map') {
+    updateMapMarkers();
+    updateInlineMapMarkers();
+  } else {
+    renderPlaces();
+  }
+}
+
+function updatePlanCount() {
+  const el = document.getElementById('planCount');
+  const num = document.getElementById('planCountNum');
+  if (!el) return;
+  const count = planCount();
+  if (count > 0) {
+    el.style.display = 'inline-flex';
+    if (num) num.textContent = count;
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function renderPlan() {
+  const container = document.getElementById('planContainer');
+  if (!container) return;
+
+  const titleInput = document.getElementById('planTitle');
+  if (titleInput && document.activeElement !== titleInput) {
+    titleInput.value = itinerary.title;
+  }
+
+  // Day tabs
+  const tabs = document.getElementById('planDayTabs');
+  if (tabs) {
+    tabs.innerHTML = itinerary.days.map(d => {
+      const active = d.id === itinerary.activeDayId;
+      return `<button class="plan-day-tab ${active ? 'active' : ''}" onclick="setActiveDay('${d.id}')">
+        ${escapeHtml(d.label)}<span class="plan-day-count">${d.items.length}</span>
+      </button>`;
+    }).join('') +
+      `<button class="plan-day-add" onclick="addDay()" title="Add a day">+ Day</button>`;
+  }
+
+  const day = getActiveDay();
+  renderPlanSummary(day);
+
+  // Stops
+  const stops = document.getElementById('planStops');
+  if (stops) {
+    const places = getPlanPlaces(day);
+    if (places.length === 0) {
+      stops.innerHTML = `
+        <div class="plan-empty">
+          <div class="plan-empty-icon">🗺️</div>
+          <h3>No stops in ${escapeHtml(day.label)} yet</h3>
+          <p>Browse places and tap the Plan button, or pull in your saved favorites.</p>
+          <div class="plan-empty-actions">
+            <button class="plan-btn" onclick="switchView('list')">Browse places</button>
+            <button class="plan-btn ghost" onclick="addFavoritesToDay()">Add favorites</button>
+          </div>
+          ${itinerary.days.length > 1 ? `<button class="plan-remove-day" onclick="removeDay('${day.id}')">Remove ${escapeHtml(day.label)}</button>` : ''}
+        </div>`;
+    } else {
+      stops.innerHTML = places.map((place, i) => renderPlanStopCard(place, i, places.length, day)).join('') +
+        `<div class="plan-stops-footer">
+          <button class="plan-btn ghost" onclick="addFavoritesToDay()">+ Add favorites</button>
+          ${itinerary.days.length > 1 ? `<button class="plan-remove-day" onclick="removeDay('${day.id}')">Remove ${escapeHtml(day.label)}</button>` : ''}
+        </div>`;
+    }
+  }
+
+  renderPlanMap(day);
+}
+
+function renderPlanStopCard(place, index, total, day) {
+  const category = UBUD_DATA.categories.find(c => c.id === place.category);
+  const dayOptions = itinerary.days
+    .filter(d => d.id !== day.id)
+    .map(d => `<option value="${d.id}">→ ${escapeHtml(d.label)}</option>`)
+    .join('');
+
+  return `
+    <div class="plan-stop">
+      <div class="plan-stop-index">${index + 1}</div>
+      <div class="plan-stop-body" onclick="openPlaceModal(${place.id})">
+        <div class="plan-stop-name">${escapeHtml(place.name)}</div>
+        <div class="plan-stop-meta">
+          <span>${category?.icon || ''} ${escapeHtml(category?.name || place.category)}</span>
+          ${place.area ? `<span>📍 ${escapeHtml(place.area)}</span>` : ''}
+          ${place.rating ? `<span>★ ${place.rating}</span>` : ''}
+          ${(!place.lat || !place.lng) ? `<span class="plan-stop-noloc">no location</span>` : ''}
+        </div>
+      </div>
+      <div class="plan-stop-actions" onclick="event.stopPropagation()">
+        <button class="plan-icon-btn" onclick="moveItem('${day.id}', ${place.id}, -1)" ${index === 0 ? 'disabled' : ''} aria-label="Move up">↑</button>
+        <button class="plan-icon-btn" onclick="moveItem('${day.id}', ${place.id}, 1)" ${index === total - 1 ? 'disabled' : ''} aria-label="Move down">↓</button>
+        ${dayOptions ? `<select class="plan-move-select" onchange="moveItemToDay(${place.id}, this.value)" aria-label="Move to another day">
+          <option value="">Move…</option>${dayOptions}
+        </select>` : ''}
+        <button class="plan-icon-btn danger" onclick="removeFromPlan(${place.id}, '${day.id}')" aria-label="Remove from plan">✕</button>
+      </div>
+    </div>`;
+}
+
+function renderPlanSummary(day) {
+  const el = document.getElementById('planSummary');
+  if (!el) return;
+  const places = getPlanPlaces(day);
+  if (places.length === 0) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  const dist = dayDistanceKm(day);
+  const walk = formatDuration(dist / 4.5);   // ~4.5 km/h walking
+  const ride = formatDuration(dist / 25);    // ~25 km/h scooter in Ubud
+  el.style.display = 'flex';
+  el.innerHTML = `
+    <div class="plan-summary-stats">
+      <div class="plan-summary-item"><span class="plan-summary-num">${places.length}</span><span class="plan-summary-label">stops</span></div>
+      <div class="plan-summary-item"><span class="plan-summary-num">${dist.toFixed(1)}</span><span class="plan-summary-label">km route</span></div>
+      <div class="plan-summary-item"><span class="plan-summary-num">${walk}</span><span class="plan-summary-label">🚶 walk</span></div>
+      <div class="plan-summary-item"><span class="plan-summary-num">${ride}</span><span class="plan-summary-label">🛵 ride</span></div>
+    </div>
+    <div class="plan-summary-actions">
+      <button class="plan-btn" onclick="optimizeDay('${day.id}')">⚡ Optimize</button>
+      <button class="plan-btn" onclick="openDayInMaps('${day.id}')">🧭 Directions</button>
+      <button class="plan-btn" onclick="sharePlan()">📤 Share</button>
+    </div>`;
+}
+
+// ----- Plan map (Leaflet) -----
+function initPlanMap() {
+  const el = document.getElementById('planMap');
+  if (!el || typeof L === 'undefined') return;
+  const center = userLocation || UBUD_DATA.mapCenter;
+  planMap = L.map('planMap').setView([center.lat, center.lng], 14);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom: 19
+  }).addTo(planMap);
+}
+
+function renderPlanMap(day) {
+  if (!planMap) return;
+
+  planMap.eachLayer(layer => {
+    if (layer instanceof L.Marker || layer instanceof L.Polyline) {
+      planMap.removeLayer(layer);
+    }
+  });
+
+  const places = getPlanPlaces(day).filter(p => p.lat && p.lng);
+  const latlngs = [];
+
+  places.forEach((place, i) => {
+    const ll = [place.lat, place.lng];
+    latlngs.push(ll);
+    const icon = L.divIcon({
+      className: 'plan-marker',
+      html: `<div class="plan-marker-pin">${i + 1}</div>`,
+      iconSize: [30, 30],
+      iconAnchor: [15, 15]
+    });
+    L.marker(ll, { icon }).addTo(planMap)
+      .bindPopup(`<div style="font-family: Inter, sans-serif; min-width: 160px;">
+        <div style="font-weight: 600;">${i + 1}. ${escapeHtml(place.name)}</div>
+        <button onclick="openPlaceModal(${place.id})" style="margin-top:6px; background:#10b981; color:#000; border:none; padding:5px 10px; border-radius:6px; cursor:pointer; font-weight:500;">View details</button>
+      </div>`);
+  });
+
+  if (latlngs.length > 1) {
+    L.polyline(latlngs, { color: '#10b981', weight: 3, opacity: 0.85, dashArray: '6 8' }).addTo(planMap);
+  }
+
+  if (userLocation && userLocation.lat && userLocation.lng) {
+    const userIcon = L.divIcon({
+      className: 'user-location-marker',
+      html: `<div style="width: 16px; height: 16px; background: #3b82f6; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 2px #3b82f6, 0 2px 8px rgba(0,0,0,0.4);"></div>`,
+      iconSize: [16, 16],
+      iconAnchor: [8, 8]
+    });
+    L.marker([userLocation.lat, userLocation.lng], { icon: userIcon }).addTo(planMap)
+      .bindPopup('<div style="font-family: Inter, sans-serif; font-weight: 500;">📍 Your Location</div>');
+  }
+
+  setTimeout(() => {
+    if (!planMap) return;
+    planMap.invalidateSize();
+    if (latlngs.length > 0) {
+      const all = (userLocation && userLocation.lat)
+        ? [[userLocation.lat, userLocation.lng], ...latlngs]
+        : latlngs;
+      planMap.fitBounds(L.latLngBounds(all).pad(0.2));
+    }
+  }, 80);
+}
+
+// ----- Toast -----
+function showToast(message) {
+  let toast = document.getElementById('toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'toast';
+    toast.className = 'toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.classList.add('show');
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(() => toast.classList.remove('show'), 2400);
+}
+
+// ----- Sharing -----
+async function sharePlan() {
+  if (planCount() === 0) {
+    showToast('Add some stops before sharing');
+    return;
+  }
+  try {
+    const res = await fetch(`${API_BASE}/itineraries`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(itinerary)
+    });
+    if (!res.ok) throw new Error('save failed');
+    const data = await res.json();
+    const url = `${window.location.origin}${window.location.pathname}?plan=${data.code}`;
+    const shareData = {
+      title: `${itinerary.title} | Ubud Insider`,
+      text: 'Check out my Ubud trip plan!',
+      url
+    };
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (e) {
+        // User cancelled or share unsupported — fall back to copy
+      }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(url);
+      showToast('Share link copied to clipboard');
+    } else {
+      prompt('Copy your share link:', url);
+    }
+  } catch (err) {
+    console.error('Error sharing plan:', err);
+    showToast('Could not create a share link');
+  }
+}
+
+async function importSharedPlan(code) {
+  const clearParam = () => window.history.replaceState({}, document.title, window.location.pathname);
+  try {
+    const res = await fetch(`${API_BASE}/itineraries/${encodeURIComponent(code)}`);
+    if (!res.ok) throw new Error('not found');
+    const data = await res.json();
+    if (!data || !Array.isArray(data.days) || data.days.length === 0) throw new Error('invalid');
+
+    const stops = data.days.reduce((s, d) => s + (Array.isArray(d.items) ? d.items.length : 0), 0);
+    const proceed = planCount() === 0 ||
+      confirm(`Load shared trip "${data.title || 'Ubud Trip'}" (${stops} stop${stops === 1 ? '' : 's'})? This replaces your current plan.`);
+    if (!proceed) {
+      clearParam();
+      return;
+    }
+
+    itinerary = {
+      title: data.title || 'My Ubud Trip',
+      activeDayId: (data.activeDayId && data.days.some(d => d.id === data.activeDayId))
+        ? data.activeDayId
+        : data.days[0].id,
+      days: data.days.map((d, i) => ({
+        id: String(d.id || `d${i + 1}`),
+        label: d.label || `Day ${i + 1}`,
+        items: (Array.isArray(d.items) ? d.items : []).map(it => ({ placeId: it.placeId }))
+      }))
+    };
+    saveItinerary();
+    clearParam();
+    switchView('plan');
+    showToast('Loaded shared trip plan');
+  } catch (err) {
+    console.error('Error importing shared plan:', err);
+    showToast('Could not load that shared trip');
+    clearParam();
   }
 }
 
