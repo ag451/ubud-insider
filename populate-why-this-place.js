@@ -406,7 +406,7 @@ const descriptions = [
 ];
 
 async function populateWhyThisPlace() {
-  const API_BASE = 'https://ubud-insider-production.up.railway.app/api';
+  const API_BASE = process.env.API_BASE || 'http://localhost:3000/api';
   
   console.log(`🚀 Starting to populate ${descriptions.length} places...\n`);
   

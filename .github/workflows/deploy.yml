@@ -1,8 +1,12 @@
 name: Deploy to GitHub Pages
 
+# NOTE: The canonical deployment target is Railway (see railway.json), which runs
+# the Node/Express backend (Google Places proxy + database). GitHub Pages only
+# serves static files, so the /api/* endpoints DO NOT work on a Pages deploy.
+# This workflow is therefore manual-only (workflow_dispatch) to avoid shipping a
+# broken static build on every push to main.
 on:
-  push:
-    branches: [ main ]
+  workflow_dispatch:
 
 permissions:
   contents: read

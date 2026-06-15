@@ -1,7 +1,8 @@
 // Update Why This Place and Google Places data in PostgreSQL
 const { Pool } = require('pg');
+const { getDatabaseUrl } = require('./db-url');
 
-const DATABASE_URL = "postgresql://postgres:XZtCObtaOWfmkXhNtOOAvcASQeVhkpxu@centerbeam.proxy.rlwy.net:46202/railway";
+const DATABASE_URL = getDatabaseUrl();
 
 // Complete data with Why This Place and Google Places info
 const placesData = [

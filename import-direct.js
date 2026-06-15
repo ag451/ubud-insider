@@ -1,7 +1,8 @@
 // Direct import from populate-why-this-place.js data to PostgreSQL
 const { Pool } = require('pg');
+const { getDatabaseUrl } = require('./db-url');
 
-const DATABASE_URL = "postgresql://postgres:XZtCObtaOWfmkXhNtOOAvcASQeVhkpxu@centerbeam.proxy.rlwy.net:46202/railway";
+const DATABASE_URL = getDatabaseUrl();
 
 // Data from populate-why-this-place.js (full dataset)
 const descriptions = [
@@ -280,7 +281,7 @@ async function importDirect() {
     console.log('✅ Import complete!');
     console.log('\n🚀 NEXT STEP: Add DATABASE_URL to Railway environment variables:');
     console.log('   Key: DATABASE_URL');
-    console.log('   Value: postgresql://postgres:XZtCObtaOWfmkXhNtOOAvcASQeVhkpxu@centerbeam.proxy.rlwy.net:46202/railway');
+    console.log('   Value: <your Railway PostgreSQL connection string>');
     console.log('\nThen deploy and your data will be persistent!');
     
   } catch (err) {

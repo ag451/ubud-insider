@@ -1,7 +1,8 @@
 // Update fitness places with correct addresses
 const { Pool } = require('pg');
+const { getDatabaseUrl } = require('./db-url');
 const pool = new Pool({
-  connectionString: 'postgresql://postgres:XZtCObtaOWfmkXhNtOOAvcASQeVhkpxu@centerbeam.proxy.rlwy.net:46202/railway',
+  connectionString: getDatabaseUrl(),
   ssl: { rejectUnauthorized: false }
 });
 

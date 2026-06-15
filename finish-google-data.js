@@ -1,5 +1,6 @@
 const { Pool } = require('pg');
-const DATABASE_URL = "postgresql://postgres:XZtCObtaOWfmkXhNtOOAvcASQeVhkpxu@centerbeam.proxy.rlwy.net:46202/railway";
+const { getDatabaseUrl } = require('./db-url');
+const DATABASE_URL = getDatabaseUrl();
 
 const remainingData = [
   { id: 11, rating: 4.7, address: "Jl. Nyuh Bojog No.12, Nyuh Kuning, Kecamatan Ubud, Kabupaten Gianyar, Bali 80571", phone: "+62 361 972 606", website: "https://sagerestaurantbali.com", hours: "Monday-Sunday: 08:00-22:00", google_place_id: "ChIJ4L2Qx7KATyVLC0S0R8KB2QA" },

@@ -1,7 +1,8 @@
 // Fix the 5 new spa places - add vibes and regenerate Why This Place
 const { Pool } = require('pg');
+const { getDatabaseUrl } = require('./db-url');
 
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:XZtCObtaOWfmkXhNtOOAvcASQeVhkpxu@centerbeam.proxy.rlwy.net:46202/railway';
+const DATABASE_URL = getDatabaseUrl();
 
 const pool = new Pool({
   connectionString: DATABASE_URL,
