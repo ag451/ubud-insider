@@ -24,6 +24,11 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
+// Lightweight health check for Railway (and any uptime monitor).
+app.get('/healthz', (req, res) => {
+  res.json({ status: 'ok', uptime: process.uptime() });
+});
+
 // Google Places API configuration
 const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY || '';
 console.log('🔑 GOOGLE_PLACES_API_KEY:', GOOGLE_PLACES_API_KEY ? 'Set (hidden)' : 'NOT SET');
