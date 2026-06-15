@@ -1,7 +1,8 @@
 // Database module - supports SQLite (local) and PostgreSQL (Railway)
 const { Pool } = require('pg');
-const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+// sqlite3 is only needed for local dev; it is lazy-required inside initSQLite()
+// so production (PostgreSQL) deployments don't need the native module installed.
 
 // Determine which database to use
 const usePostgres = () => !!(process.env.DATABASE_URL || process.env.PGDATABASE);
@@ -110,7 +111,9 @@ async function initPostgres() {
 // ========== SQLITE (local dev) ==========
 function initSQLite() {
   console.log('📦 Using SQLite database (local)');
-  
+
+  const sqlite3 = require('sqlite3').verbose();
+
   return new Promise((resolve, reject) => {
     const db = new sqlite3.Database(path.join(__dirname, 'database.sqlite'), (err) => {
       if (err) reject(err);
@@ -168,17 +171,21 @@ function initSQLite() {
             last_generated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (place_id) REFERENCES places(id) ON DELETE CASCADE
           );
-          
-          -- Migration: Add price_level column if not exists
-          ALTER TABLE places ADD COLUMN price_level INTEGER;
         `, (err) => {
-          if (err) reject(err);
-          else {
-            console.log('✅ SQLite tables ready');
-            
-            // SQLite doesn't support IF NOT EXISTS on ADD COLUMN, so ignore error
+          if (err) { reject(err); return; }
+          console.log('✅ SQLite tables ready');
+
+          // Migration for older databases: add price_level if it predates the
+          // column. SQLite has no "ADD COLUMN IF NOT EXISTS", and on a fresh DB
+          // the column already exists from CREATE TABLE above, so a duplicate
+          // column error here is expected and safe to ignore.
+          db.run('ALTER TABLE places ADD COLUMN price_level INTEGER', (alterErr) => {
+            if (alterErr && !/duplicate column name/i.test(alterErr.message)) {
+              reject(alterErr);
+              return;
+            }
             resolve(db);
-          }
+          });
         });
       }
     });

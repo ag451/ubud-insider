@@ -1,1 +1,10 @@
 node_modules/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Local SQLite database (do not commit local dev data)
+*.sqlite
+database.sqlite
