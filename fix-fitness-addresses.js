@@ -1,9 +1,10 @@
 // Fetch correct addresses for fitness places from Google Places
 const { Pool } = require('pg');
 const https = require('https');
+const { getDatabaseUrl } = require('./db-url');
 
 const pool = new Pool({
-  connectionString: 'postgresql://postgres:XZtCObtaOWfmkXhNtOOAvcASQeVhkpxu@centerbeam.proxy.rlwy.net:46202/railway',
+  connectionString: getDatabaseUrl(),
   ssl: { rejectUnauthorized: false }
 });
 

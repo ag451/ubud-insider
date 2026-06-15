@@ -1,8 +1,9 @@
 // Direct import from API to PostgreSQL
 const { Pool } = require('pg');
+const { getDatabaseUrl } = require('./db-url');
 
-const DATABASE_URL = "postgresql://postgres:XZtCObtaOWfmkXhNtOOAvcASQeVhkpxu@centerbeam.proxy.rlwy.net:46202/railway";
-const API_BASE = "https://ubud-insider-production.up.railway.app/api";
+const DATABASE_URL = getDatabaseUrl();
+const API_BASE = process.env.API_BASE || "http://localhost:3000/api";
 
 async function importToPostgres() {
   console.log('🔌 Connecting to PostgreSQL...');
