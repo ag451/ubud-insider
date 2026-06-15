@@ -622,6 +622,14 @@ function switchViewPlan() {
   if (vibeSection) vibeSection.style.display = 'none';
   if (planContainer) planContainer.style.display = 'block';
   
+  // The search / location / stats chrome isn't relevant while planning
+  const locationSection = document.getElementById('locationSection');
+  const searchWrapper = document.getElementById('searchWrapper');
+  const statsBar = document.getElementById('statsBar');
+  if (locationSection) locationSection.style.display = 'none';
+  if (searchWrapper) searchWrapper.style.display = 'none';
+  if (statsBar) statsBar.style.display = 'none';
+  
   if (!planMap || typeof planMap.getCenter !== 'function') {
     initPlanMap();
   }
@@ -643,6 +651,13 @@ function hidePlanView() {
   const vibeSection = document.getElementById('vibeSection');
   if (categorySection) categorySection.style.display = '';
   if (vibeSection) vibeSection.style.display = '';
+  // Restore the search / location / stats chrome
+  const locationSection = document.getElementById('locationSection');
+  const searchWrapper = document.getElementById('searchWrapper');
+  const statsBar = document.getElementById('statsBar');
+  if (locationSection) locationSection.style.display = '';
+  if (searchWrapper) searchWrapper.style.display = '';
+  if (statsBar) statsBar.style.display = '';
 }
 
 // Mobile view switch - full screen overlay
@@ -1283,6 +1298,13 @@ function renderPlaces() {
           <h3 class="place-name">${escapeHtml(place.name)}</h3>
         </div>
         
+        <button class="plan-icon-add ${where ? 'active' : ''}"
+                onclick="event.stopPropagation(); openAddMenu(${place.id}, this)"
+                aria-label="${where ? 'In your plan: ' + escapeHtml(where.label) : 'Add to plan'}"
+                title="${where ? 'In ' + escapeHtml(where.label) : 'Add to plan'}">
+          ${where ? '✓' : '＋'}
+        </button>
+        
         <div class="place-meta">
           <span class="category-tag">${category?.icon || ''} ${category?.name || place.category}</span>
           ${place.area ? `<span class="area-tag">📍 ${escapeHtml(place.area)}</span>` : ''}
@@ -1298,9 +1320,6 @@ function renderPlaces() {
         ${renderWhyThisPlace(place.why_this_place)}
         
         <div class="card-actions">
-          <button class="plan-add-btn ${where ? 'active' : ''}" onclick="event.stopPropagation(); openAddMenu(${place.id}, this)" aria-label="${where ? 'In your plan' : 'Add to plan'}">
-            ${where ? '✓ ' + escapeHtml(where.label) : '＋ Add'}
-          </button>
           ${getCardMapsLink(place)}
           <button class="details-btn" onclick="event.stopPropagation(); openPlaceModal(${place.id})">
             Details →
@@ -1777,11 +1796,6 @@ function removeDay(id) {
   renderPlan();
 }
 
-function updatePlanTitle(value) {
-  itinerary.title = value || 'My Ubud Trip';
-  saveItinerary();
-}
-
 // ----- Item management -----
 function addToPlan(placeId, dayId) {
   const targetId = dayId || itinerary.activeDayId;
@@ -2030,11 +2044,6 @@ function renderPlan() {
   const container = document.getElementById('planContainer');
   if (!container) return;
 
-  const titleInput = document.getElementById('planTitle');
-  if (titleInput && document.activeElement !== titleInput) {
-    titleInput.value = itinerary.title;
-  }
-
   // Day tabs
   const tabs = document.getElementById('planDayTabs');
   if (tabs) {
@@ -2132,6 +2141,7 @@ function renderPlanSummary(day) {
       <div class="plan-summary-actions">
         <span class="plan-summary-hint">Move stops into a day to build a route</span>
         <button class="plan-btn" onclick="sharePlan()">📤 Share</button>
+        <button class="plan-btn ghost" onclick="clearPlan()">🗑 Clear</button>
       </div>`;
     return;
   }
@@ -2149,6 +2159,7 @@ function renderPlanSummary(day) {
       <button class="plan-btn" onclick="optimizeDay('${day.id}')">⚡ Optimize</button>
       <button class="plan-btn" onclick="openDayInMaps('${day.id}')">🧭 Directions</button>
       <button class="plan-btn" onclick="sharePlan()">📤 Share</button>
+      <button class="plan-btn ghost" onclick="clearPlan()">🗑 Clear</button>
     </div>`;
 }
 

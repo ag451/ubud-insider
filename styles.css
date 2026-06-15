@@ -1621,6 +1621,39 @@ body {
     font-size: 0.95rem;
 }
 
+/* Compact Add icon on cards (top-right, where the star used to be) */
+.plan-icon-add {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    color: var(--text-secondary);
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.plan-icon-add:hover {
+    transform: scale(1.1);
+    border-color: var(--accent);
+    color: var(--accent-light);
+}
+
+.plan-icon-add.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+}
+
 /* Plan container */
 .plan-container {
     padding: 4px 0 24px;
