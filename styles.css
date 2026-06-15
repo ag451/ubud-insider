@@ -2013,6 +2013,93 @@ body {
     transform: translateX(-50%) translateY(0);
 }
 
+/* Add-to-day popover menu */
+.add-menu {
+    position: fixed;
+    z-index: 5000;
+    min-width: 180px;
+    max-width: 240px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.add-menu-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary);
+    padding: 6px 10px 4px;
+}
+
+.add-menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    padding: 9px 10px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.add-menu-item:hover {
+    background: var(--bg-hover);
+}
+
+.add-menu-item.current {
+    color: var(--accent-light);
+}
+
+.add-menu-check {
+    color: var(--accent-light);
+    font-weight: 700;
+}
+
+.add-menu-new {
+    color: var(--text-secondary);
+    border-top: 1px solid var(--border);
+    margin-top: 2px;
+    padding-top: 11px;
+}
+
+.add-menu-item.danger {
+    color: #f87171;
+}
+
+.add-menu-item.danger:hover {
+    background: rgba(239, 68, 68, 0.12);
+}
+
+/* Saved bucket tab accent */
+.plan-day-tab.saved.active {
+    background: var(--favorite);
+    border-color: var(--favorite);
+    color: #000;
+}
+
+.plan-day-tab.saved:not(.active) {
+    border-color: var(--border-light);
+}
+
+.plan-summary-hint {
+    font-size: 0.78rem;
+    color: var(--text-tertiary);
+    align-self: center;
+}
+
 @media (min-width: 768px) {
     .plan-map {
         height: 340px;

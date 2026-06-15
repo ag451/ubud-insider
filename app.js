@@ -3,17 +3,19 @@ let currentCategory = 'all';
 let selectedVibes = []; // Multi-select vibe filters
 let searchTerm = '';
 let currentView = 'list';
-let favorites = JSON.parse(localStorage.getItem('ubud_favorites') || '[]');
 let map = null;
 let markers = [];
 let userLocation = null; // { lat, lng, address }
 let whyThisPlaceCache = {}; // Cache for Why This Place data
 let planMap = null; // Leaflet map instance for the itinerary planner
+let currentModalPlaceId = null; // Track the open place modal for live refresh
 
 const API_BASE = '/api';
 
-// Itinerary planner state (device-local, mirrors favorites persistence)
-let itinerary = loadItinerary();
+// Itinerary planner state (device-local). A single trip with a pinned
+// "Saved" bucket (replaces the old favorites) plus any number of days.
+// Initialized in DOMContentLoaded (loadItinerary references consts defined later).
+let itinerary = null;
 
 // Load places from database
 async function loadPlacesFromDB() {
@@ -50,11 +52,11 @@ async function importInitialData() {
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', async () => {
+  itinerary = loadItinerary();
   await loadPlacesFromDB();
   renderCategories();
   renderVibes();
   renderPlaces();
-  updateFavCount();
   updatePlanCount();
   setupEventListeners();
   // Map is initialized on demand when user switches to map view
@@ -1273,20 +1275,13 @@ function renderPlaces() {
   
   container.innerHTML = filtered.map((place, index) => {
     const category = UBUD_DATA.categories.find(c => c.id === place.category);
-    const isFav = favorites.includes(place.id);
-    const inPlan = isInPlan(place.id);
+    const where = dayOfPlace(place.id);
     
     return `
       <article class="place-card" style="animation-delay: ${index * 0.05}s" onclick="openPlaceModal(${place.id})">
         <div class="place-header">
           <h3 class="place-name">${escapeHtml(place.name)}</h3>
         </div>
-        
-        <button class="fav-btn ${isFav ? 'active' : ''}" 
-                onclick="event.stopPropagation(); toggleFavorite(${place.id})"
-                aria-label="${isFav ? 'Remove from favorites' : 'Add to favorites'}">
-          ${isFav ? '⭐' : '☆'}
-        </button>
         
         <div class="place-meta">
           <span class="category-tag">${category?.icon || ''} ${category?.name || place.category}</span>
@@ -1303,8 +1298,8 @@ function renderPlaces() {
         ${renderWhyThisPlace(place.why_this_place)}
         
         <div class="card-actions">
-          <button class="plan-add-btn ${inPlan ? 'active' : ''}" onclick="event.stopPropagation(); togglePlan(${place.id})" aria-label="${inPlan ? 'Remove from trip plan' : 'Add to trip plan'}">
-            ${inPlan ? '✓ Planned' : '＋ Plan'}
+          <button class="plan-add-btn ${where ? 'active' : ''}" onclick="event.stopPropagation(); openAddMenu(${place.id}, this)" aria-label="${where ? 'In your plan' : 'Add to plan'}">
+            ${where ? '✓ ' + escapeHtml(where.label) : '＋ Add'}
           </button>
           ${getCardMapsLink(place)}
           <button class="details-btn" onclick="event.stopPropagation(); openPlaceModal(${place.id})">
@@ -1343,8 +1338,8 @@ function openPlaceModal(placeId) {
   if (!place) return;
   
   const category = UBUD_DATA.categories.find(c => c.id === place.category);
-  const isFav = favorites.includes(place.id);
-  const inPlan = isInPlan(place.id);
+  const where = dayOfPlace(place.id);
+  currentModalPlaceId = place.id;
   
   const modalBody = document.getElementById('modalBody');
   modalBody.innerHTML = `
@@ -1354,12 +1349,9 @@ function openPlaceModal(placeId) {
         <span class="category-tag">${category?.name || place.category}</span>
         ${place.area ? `<span class="area-tag">📍 ${escapeHtml(place.area)}</span>` : ''}
         ${renderPriceLevel(place.price_level)}
-        <button class="fav-btn ${isFav ? 'active' : ''}" onclick="toggleFavorite(${place.id}); updateModalFav(${place.id})" style="position: static; margin-left: auto;">
-          ${isFav ? '⭐' : '☆'}
-        </button>
       </div>
-      <button class="plan-add-btn modal-plan-btn ${inPlan ? 'active' : ''}" onclick="togglePlan(${place.id}); updateModalFav(${place.id})">
-        ${inPlan ? '✓ In your plan' : '＋ Add to plan'}
+      <button id="modalPlanBtn" class="plan-add-btn modal-plan-btn ${where ? 'active' : ''}" onclick="openAddMenu(${place.id}, this)">
+        ${where ? '✓ In ' + escapeHtml(where.label) : '＋ Add to plan'}
       </button>
     </div>
     
@@ -1524,10 +1516,6 @@ function getCardMapsLink(place) {
   `;
 }
 
-// Update modal favorite button
-function updateModalFav(placeId) {
-  setTimeout(() => openPlaceModal(placeId), 50);
-}
 
 // Share place function
 async function sharePlace(placeId) {
@@ -1623,6 +1611,7 @@ async function loadCrowdData(placeId) {
 function closeModal() {
   document.getElementById('placeModal').style.display = 'none';
   document.body.style.overflow = '';
+  currentModalPlaceId = null;
 }
 
 // Close modal on escape key
@@ -1630,66 +1619,90 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeModal();
 });
 
-// Toggle favorite
-function toggleFavorite(placeId) {
-  const index = favorites.indexOf(placeId);
-  
-  if (index > -1) {
-    favorites.splice(index, 1);
-  } else {
-    favorites.push(placeId);
-  }
-  
-  localStorage.setItem('ubud_favorites', JSON.stringify(favorites));
-  updateFavCount();
-  
-  if (currentView === 'list') {
-    renderPlaces();
-  }
-}
-
-// Update favorite count display
-function updateFavCount() {
-  const favCountEl = document.getElementById('favCount');
-  const favCountNum = document.getElementById('favCountNum');
-  
-  if (favorites.length > 0) {
-    favCountEl.style.display = 'inline';
-    favCountNum.textContent = favorites.length;
-  } else {
-    favCountEl.style.display = 'none';
-  }
-}
-
 // ========== ITINERARY PLANNER ==========
 const ITINERARY_KEY = 'ubud_itinerary';
+const SAVED_ID = 'saved'; // the pinned, non-removable "Saved" bucket
 
 function defaultItinerary() {
   return {
     title: 'My Ubud Trip',
     activeDayId: 'd1',
-    days: [{ id: 'd1', label: 'Day 1', items: [] }]
+    days: [
+      { id: SAVED_ID, label: 'Saved', items: [] },
+      { id: 'd1', label: 'Day 1', items: [] }
+    ]
   };
+}
+
+// Ensure the pinned Saved bucket exists and is always first
+function ensureSavedBucket(data) {
+  let saved = data.days.find(d => d.id === SAVED_ID);
+  if (!saved) {
+    saved = { id: SAVED_ID, label: 'Saved', items: [] };
+    data.days.unshift(saved);
+  } else {
+    // Move it to the front and normalize its label
+    data.days = [saved, ...data.days.filter(d => d.id !== SAVED_ID)];
+    saved.label = 'Saved';
+  }
+  return data;
+}
+
+// One-time migration: fold legacy favorites into the Saved bucket
+function migrateFavorites(data) {
+  try {
+    const raw = localStorage.getItem('ubud_favorites');
+    if (!raw) return data;
+    const favs = JSON.parse(raw);
+    if (Array.isArray(favs) && favs.length) {
+      const saved = data.days.find(d => d.id === SAVED_ID);
+      const have = new Set();
+      data.days.forEach(d => d.items.forEach(it => have.add(it.placeId)));
+      favs.forEach(pid => {
+        const id = Number(pid);
+        if (Number.isFinite(id) && !have.has(id)) {
+          saved.items.push({ placeId: id });
+          have.add(id);
+        }
+      });
+    }
+    // Retire the favorites store so this only happens once
+    localStorage.removeItem('ubud_favorites');
+  } catch (e) { /* ignore */ }
+  return data;
 }
 
 // Load itinerary from localStorage with light validation
 function loadItinerary() {
+  let data;
   try {
     const raw = localStorage.getItem(ITINERARY_KEY);
-    if (!raw) return defaultItinerary();
-    const data = JSON.parse(raw);
+    data = raw ? JSON.parse(raw) : defaultItinerary();
     if (!data || !Array.isArray(data.days) || data.days.length === 0) {
-      return defaultItinerary();
+      data = defaultItinerary();
     }
-    data.days.forEach(d => { if (!Array.isArray(d.items)) d.items = []; });
-    if (!data.activeDayId || !data.days.some(d => d.id === data.activeDayId)) {
-      data.activeDayId = data.days[0].id;
-    }
-    if (!data.title) data.title = 'My Ubud Trip';
-    return data;
   } catch (e) {
-    return defaultItinerary();
+    data = defaultItinerary();
   }
+  data.days.forEach(d => { if (!Array.isArray(d.items)) d.items = []; });
+  data = ensureSavedBucket(data);
+  data = migrateFavorites(data);
+  if (!data.activeDayId || !data.days.some(d => d.id === data.activeDayId)) {
+    // Prefer the first real day over the Saved bucket as the default active tab
+    const firstDay = data.days.find(d => d.id !== SAVED_ID) || data.days[0];
+    data.activeDayId = firstDay.id;
+  }
+  if (!data.title) data.title = 'My Ubud Trip';
+  return data;
+}
+
+// Real (non-Saved) days only
+function realDays() {
+  return itinerary.days.filter(d => d.id !== SAVED_ID);
+}
+
+function getSavedDay() {
+  return itinerary.days.find(d => d.id === SAVED_ID) || itinerary.days[0];
 }
 
 function saveItinerary() {
@@ -1728,9 +1741,14 @@ function getPlanPlaces(day) {
 }
 
 // ----- Day management -----
-function addDay() {
-  const day = { id: genId('d'), label: 'Day ' + (itinerary.days.length + 1), items: [] };
+function createDay() {
+  const day = { id: genId('d'), label: 'Day ' + (realDays().length + 1), items: [] };
   itinerary.days.push(day);
+  return day;
+}
+
+function addDay() {
+  const day = createDay();
   itinerary.activeDayId = day.id;
   saveItinerary();
   renderPlan();
@@ -1743,11 +1761,17 @@ function setActiveDay(id) {
 }
 
 function removeDay(id) {
-  if (itinerary.days.length <= 1) {
-    itinerary.days[0].items = [];
+  if (id === SAVED_ID) return; // the Saved bucket is permanent
+  const reals = realDays();
+  if (reals.length <= 1) {
+    // Always keep at least one real day — just clear it
+    const only = itinerary.days.find(d => d.id === id);
+    if (only) only.items = [];
   } else {
     itinerary.days = itinerary.days.filter(d => d.id !== id);
-    if (itinerary.activeDayId === id) itinerary.activeDayId = itinerary.days[0].id;
+    if (itinerary.activeDayId === id) {
+      itinerary.activeDayId = realDays()[0].id;
+    }
   }
   saveItinerary();
   renderPlan();
@@ -1783,9 +1807,73 @@ function removeFromPlan(placeId, dayId) {
   refreshPlanUI();
 }
 
-function togglePlan(placeId) {
-  if (isInPlan(placeId)) removeFromPlan(placeId);
-  else addToPlan(placeId);
+// ----- Add-to-day menu -----
+function openAddMenu(placeId, anchor) {
+  closeAddMenu();
+  const current = dayOfPlace(placeId);
+  const menu = document.createElement('div');
+  menu.className = 'add-menu';
+  menu.id = 'addMenu';
+
+  const rows = [];
+  rows.push(`<div class="add-menu-title">${current ? 'In your plan — move to' : 'Add to'}</div>`);
+  itinerary.days.forEach(d => {
+    const isCurrent = current && current.id === d.id;
+    const icon = d.id === SAVED_ID ? '📌' : '📅';
+    rows.push(`<button class="add-menu-item ${isCurrent ? 'current' : ''}" onclick="chooseAddTarget(${placeId}, '${d.id}')">
+      <span>${icon} ${escapeHtml(d.label)}</span>${isCurrent ? '<span class="add-menu-check">✓</span>' : ''}
+    </button>`);
+  });
+  rows.push(`<button class="add-menu-item add-menu-new" onclick="chooseAddTarget(${placeId}, '__new__')">➕ New day</button>`);
+  if (current) {
+    rows.push(`<button class="add-menu-item danger" onclick="chooseAddTarget(${placeId}, '__remove__')">✕ Remove from plan</button>`);
+  }
+  menu.innerHTML = rows.join('');
+  document.body.appendChild(menu);
+  positionAddMenu(menu, anchor);
+  setTimeout(() => document.addEventListener('click', closeAddMenuOnOutside), 0);
+}
+
+function positionAddMenu(menu, anchor) {
+  menu.style.visibility = 'hidden';
+  const r = anchor.getBoundingClientRect();
+  const mh = menu.offsetHeight;
+  const mw = menu.offsetWidth;
+  let left = r.left;
+  if (left + mw > window.innerWidth - 8) left = window.innerWidth - mw - 8;
+  if (left < 8) left = 8;
+  let top = r.bottom + 6;
+  if (top + mh > window.innerHeight - 8) {
+    top = r.top - mh - 6;
+    if (top < 8) top = 8;
+  }
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+  menu.style.visibility = 'visible';
+}
+
+function closeAddMenu() {
+  const existing = document.getElementById('addMenu');
+  if (existing) existing.remove();
+  document.removeEventListener('click', closeAddMenuOnOutside);
+}
+
+function closeAddMenuOnOutside(e) {
+  const menu = document.getElementById('addMenu');
+  if (menu && !menu.contains(e.target)) closeAddMenu();
+}
+
+function chooseAddTarget(placeId, target) {
+  closeAddMenu();
+  if (target === '__remove__') {
+    removeFromPlan(placeId);
+  } else if (target === '__new__') {
+    const day = createDay();
+    itinerary.activeDayId = day.id;
+    addToPlan(placeId, day.id);
+  } else {
+    addToPlan(placeId, target);
+  }
 }
 
 function moveItem(dayId, placeId, dir) {
@@ -1809,24 +1897,6 @@ function moveItemToDay(placeId, toDayId) {
   to.items.push({ placeId });
   saveItinerary();
   renderPlan();
-}
-
-function addFavoritesToDay() {
-  if (!favorites || favorites.length === 0) {
-    showToast('No saved favorites yet');
-    return;
-  }
-  const day = getActiveDay();
-  let added = 0;
-  favorites.forEach(pid => {
-    if (!dayOfPlace(pid)) {
-      day.items.push({ placeId: pid });
-      added++;
-    }
-  });
-  saveItinerary();
-  showToast(added > 0 ? `Added ${added} favorite${added === 1 ? '' : 's'} to ${day.label}` : 'Favorites already in your plan');
-  refreshPlanUI();
 }
 
 function clearPlan() {
@@ -1922,6 +1992,9 @@ function openDayInMaps(dayId) {
 // ----- Rendering -----
 function refreshPlanUI() {
   updatePlanCount();
+  if (currentModalPlaceId != null) {
+    updateModalPlanBtn(currentModalPlaceId);
+  }
   if (currentView === 'plan') {
     renderPlan();
   } else if (currentView === 'map') {
@@ -1930,6 +2003,14 @@ function refreshPlanUI() {
   } else {
     renderPlaces();
   }
+}
+
+function updateModalPlanBtn(placeId) {
+  const btn = document.getElementById('modalPlanBtn');
+  if (!btn) return;
+  const where = dayOfPlace(placeId);
+  btn.className = 'plan-add-btn modal-plan-btn' + (where ? ' active' : '');
+  btn.textContent = where ? `✓ In ${where.label}` : '＋ Add to plan';
 }
 
 function updatePlanCount() {
@@ -1959,14 +2040,17 @@ function renderPlan() {
   if (tabs) {
     tabs.innerHTML = itinerary.days.map(d => {
       const active = d.id === itinerary.activeDayId;
-      return `<button class="plan-day-tab ${active ? 'active' : ''}" onclick="setActiveDay('${d.id}')">
-        ${escapeHtml(d.label)}<span class="plan-day-count">${d.items.length}</span>
+      const icon = d.id === SAVED_ID ? '📌 ' : '';
+      return `<button class="plan-day-tab ${active ? 'active' : ''} ${d.id === SAVED_ID ? 'saved' : ''}" onclick="setActiveDay('${d.id}')">
+        ${icon}${escapeHtml(d.label)}<span class="plan-day-count">${d.items.length}</span>
       </button>`;
     }).join('') +
       `<button class="plan-day-add" onclick="addDay()" title="Add a day">+ Day</button>`;
   }
 
   const day = getActiveDay();
+  const isSaved = day.id === SAVED_ID;
+  const canRemoveDay = !isSaved && realDays().length > 1;
   renderPlanSummary(day);
 
   // Stops
@@ -1974,23 +2058,25 @@ function renderPlan() {
   if (stops) {
     const places = getPlanPlaces(day);
     if (places.length === 0) {
+      const savedHasItems = getSavedDay().items.length > 0;
       stops.innerHTML = `
         <div class="plan-empty">
-          <div class="plan-empty-icon">🗺️</div>
-          <h3>No stops in ${escapeHtml(day.label)} yet</h3>
-          <p>Browse places and tap the Plan button, or pull in your saved favorites.</p>
+          <div class="plan-empty-icon">${isSaved ? '📌' : '🗺️'}</div>
+          <h3>${isSaved ? 'Nothing saved yet' : 'No stops in ' + escapeHtml(day.label) + ' yet'}</h3>
+          <p>${isSaved
+            ? 'Tap “＋ Add” on any place and choose <strong>Saved</strong> to keep a shortlist here.'
+            : 'Browse places and tap “＋ Add”, or move stops here from Saved.'}</p>
           <div class="plan-empty-actions">
             <button class="plan-btn" onclick="switchView('list')">Browse places</button>
-            <button class="plan-btn ghost" onclick="addFavoritesToDay()">Add favorites</button>
+            ${(!isSaved && savedHasItems) ? `<button class="plan-btn ghost" onclick="setActiveDay('${SAVED_ID}')">Open Saved</button>` : ''}
           </div>
-          ${itinerary.days.length > 1 ? `<button class="plan-remove-day" onclick="removeDay('${day.id}')">Remove ${escapeHtml(day.label)}</button>` : ''}
+          ${canRemoveDay ? `<button class="plan-remove-day" onclick="removeDay('${day.id}')">Remove ${escapeHtml(day.label)}</button>` : ''}
         </div>`;
     } else {
       stops.innerHTML = places.map((place, i) => renderPlanStopCard(place, i, places.length, day)).join('') +
-        `<div class="plan-stops-footer">
-          <button class="plan-btn ghost" onclick="addFavoritesToDay()">+ Add favorites</button>
-          ${itinerary.days.length > 1 ? `<button class="plan-remove-day" onclick="removeDay('${day.id}')">Remove ${escapeHtml(day.label)}</button>` : ''}
-        </div>`;
+        (canRemoveDay
+          ? `<div class="plan-stops-footer"><button class="plan-remove-day" onclick="removeDay('${day.id}')">Remove ${escapeHtml(day.label)}</button></div>`
+          : '');
     }
   }
 
@@ -2036,10 +2122,22 @@ function renderPlanSummary(day) {
     el.innerHTML = '';
     return;
   }
+  el.style.display = 'flex';
+  // Saved is a shortlist, not a route — keep it simple
+  if (day.id === SAVED_ID) {
+    el.innerHTML = `
+      <div class="plan-summary-stats">
+        <div class="plan-summary-item"><span class="plan-summary-num">${places.length}</span><span class="plan-summary-label">saved</span></div>
+      </div>
+      <div class="plan-summary-actions">
+        <span class="plan-summary-hint">Move stops into a day to build a route</span>
+        <button class="plan-btn" onclick="sharePlan()">📤 Share</button>
+      </div>`;
+    return;
+  }
   const dist = dayDistanceKm(day);
   const walk = formatDuration(dist / 4.5);   // ~4.5 km/h walking
   const ride = formatDuration(dist / 25);    // ~25 km/h scooter in Ubud
-  el.style.display = 'flex';
   el.innerHTML = `
     <div class="plan-summary-stats">
       <div class="plan-summary-item"><span class="plan-summary-num">${places.length}</span><span class="plan-summary-label">stops</span></div>
@@ -2095,7 +2193,8 @@ function renderPlanMap(day) {
       </div>`);
   });
 
-  if (latlngs.length > 1) {
+  // Saved is an unordered shortlist, so don't draw a route line for it
+  if (latlngs.length > 1 && day.id !== SAVED_ID) {
     L.polyline(latlngs, { color: '#10b981', weight: 3, opacity: 0.85, dashArray: '6 8' }).addTo(planMap);
   }
 
