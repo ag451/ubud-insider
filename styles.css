@@ -630,6 +630,38 @@ body {
     color: var(--ink);
 }
 
+/* Corner "add to trip" toggle on cards */
+.trip-fab {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--card);
+    border: 2px solid var(--ink);
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    color: var(--ink);
+    font-size: 1.375rem;
+    font-weight: 800;
+    line-height: 1;
+    z-index: 10;
+    transition: transform 0.12s ease, background 0.15s ease;
+}
+
+.trip-fab:hover {
+    transform: scale(1.08);
+    background: var(--chip-bg);
+}
+
+.trip-fab.active {
+    background: var(--mint);
+    color: #0A3D30;
+}
+
 .place-meta {
     display: flex;
     gap: 8px;

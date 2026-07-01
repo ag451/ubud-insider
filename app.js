@@ -1485,10 +1485,10 @@ function renderPlaces() {
           <h3 class="place-name">${escapeHtml(place.name)}</h3>
         </div>
         
-        <button class="fav-btn ${isFav ? 'active' : ''}" 
-                onclick="event.stopPropagation(); toggleFavorite(${place.id})"
-                aria-label="${isFav ? 'Remove from favorites' : 'Add to favorites'}">
-          ${isFav ? '⭐' : '☆'}
+        <button class="trip-fab ${inTrip ? 'active' : ''}" 
+                onclick="event.stopPropagation(); toggleItinerary(${place.id})"
+                aria-label="${inTrip ? 'Remove from trip' : 'Add to trip'}">
+          ${inTrip ? '✓' : '+'}
         </button>
         
         <div class="place-meta">
@@ -1506,9 +1506,6 @@ function renderPlaces() {
         ${renderWhyThisPlace(place.why_this_place)}
         
         <div class="card-actions">
-          <button class="trip-btn ${inTrip ? 'active' : ''}" onclick="event.stopPropagation(); toggleItinerary(${place.id})" aria-label="${inTrip ? 'Remove from trip' : 'Add to trip'}">
-            ${inTrip ? '✓ In trip' : '+ Trip'}
-          </button>
           <button class="details-btn" onclick="event.stopPropagation(); openPlaceModal(${place.id})">
             Details →
           </button>
