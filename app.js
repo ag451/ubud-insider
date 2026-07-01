@@ -844,6 +844,8 @@ function switchViewMobile(view) {
   const appContainer = document.getElementById('appContainer');
   const mapContainer = document.getElementById('mapContainer');
   const placesList = document.getElementById('placesList');
+  const categorySection = document.getElementById('categorySection');
+  const vibeSection = document.getElementById('vibeSection');
   
   if (view === 'map') {
     appContainer.style.display = 'none';
@@ -865,6 +867,9 @@ function switchViewMobile(view) {
     appContainer.style.display = 'block';
     mapContainer.classList.remove('active');
     placesList.style.display = 'flex';
+    // Restore the filter sections (the Trip view hides them)
+    if (categorySection) categorySection.style.display = 'block';
+    if (vibeSection) vibeSection.style.display = 'block';
     renderPlaces();
   }
 }
