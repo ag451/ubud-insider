@@ -368,6 +368,41 @@ body {
     color: var(--text-primary);
 }
 
+.near-me-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 9px 16px;
+    background: var(--tangerine);
+    border: 2px solid var(--ink);
+    border-radius: var(--radius-full);
+    color: #fff;
+    font-size: 0.8125rem;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: var(--stamp);
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+.near-me-btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 var(--ink);
+}
+
+.near-me-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.near-me-btn.loading svg {
+    animation: nearMeSpin 0.9s linear infinite;
+}
+
+@keyframes nearMeSpin {
+    to { transform: rotate(360deg); }
+}
+
 .location-status {
     margin-top: 8px;
     padding: 8px 12px;
@@ -487,14 +522,6 @@ body {
     cursor: not-allowed;
 }
 
-.favorites-count {
-    color: var(--favorite);
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
 /* Places List */
 .places-container {
     display: flex;
@@ -598,36 +625,6 @@ body {
 
 .place-header:has(.user-avatar) .place-name {
     padding-right: 72px;
-}
-
-.fav-btn {
-    position: absolute;
-    top: 14px;
-    right: 14px;
-    width: 36px;
-    height: 36px;
-    background: var(--card);
-    border: 2px solid var(--ink);
-    border-radius: var(--radius-full);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.12s ease, background 0.15s ease;
-    font-size: 1.125rem;
-    z-index: 10;
-    color: var(--ink);
-}
-
-.fav-btn:hover {
-    transform: scale(1.08);
-    background: var(--chip-bg);
-}
-
-.fav-btn.active {
-    background: var(--sunshine);
-    border-color: var(--ink);
-    color: var(--ink);
 }
 
 /* Corner "add to trip" toggle on cards */
@@ -1855,7 +1852,8 @@ body {
     box-shadow: 1px 1px 0 var(--ink);
 }
 
-.trip-clear-btn {
+.trip-clear-btn,
+.trip-map-btn {
     padding: 9px 16px;
     background: var(--card);
     border: 2px solid var(--ink);
@@ -1867,7 +1865,8 @@ body {
     transition: background 0.15s ease;
 }
 
-.trip-clear-btn:hover {
+.trip-clear-btn:hover,
+.trip-map-btn:hover {
     background: var(--chip-bg);
 }
 

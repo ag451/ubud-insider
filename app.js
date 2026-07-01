@@ -3,7 +3,7 @@ let currentCategory = 'all';
 let selectedVibes = []; // Multi-select vibe filters
 let searchTerm = '';
 let currentView = 'list';
-let favorites = JSON.parse(localStorage.getItem('ubud_favorites') || '[]');
+let mapTripMode = false; // when true, the map shows only the itinerary as an ordered route
 let map = null;
 let markers = [];
 let userLocation = null; // { lat, lng, address }
@@ -313,7 +313,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderCategories();
   renderVibes();
   renderPlaces();
-  updateFavCount();
   updateTripCount();
   setupEventListeners();
   // Map is initialized on demand when user switches to map view
@@ -551,6 +550,7 @@ function setupEventListeners() {
   document.querySelectorAll('.view-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const view = btn.dataset.view;
+      mapTripMode = false; // tab navigation exits trip-on-map mode
       switchView(view);
     });
   });
@@ -772,6 +772,45 @@ async function setUserLocation() {
 }
 
 // Clear user location
+// Use the device's GPS to sort places by distance from the user
+function useMyLocation() {
+  const btn = document.getElementById('nearMeBtn');
+  if (!navigator.geolocation) {
+    showLocationStatus('❌ Location isn\'t supported on this device', 'error');
+    return;
+  }
+  showLocationStatus('📍 Getting your location…', '');
+  if (btn) { btn.disabled = true; btn.classList.add('loading'); }
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      userLocation = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        address: 'Your current location'
+      };
+      localStorage.setItem('ubud_user_location', JSON.stringify(userLocation));
+      updateLocationUI();
+      showLocationStatus('📍 Near you — places sorted by distance', 'success');
+      renderPlaces();
+      if (currentView === 'map') {
+        updateMapMarkers();
+        if (window.inlineMap) updateInlineMapMarkers();
+        if (map && typeof map.setView === 'function') map.setView([userLocation.lat, userLocation.lng], 15);
+      }
+      if (btn) { btn.disabled = false; btn.classList.remove('loading'); }
+    },
+    (err) => {
+      let msg = '❌ Could not get your location';
+      if (err.code === 1) msg = '❌ Location permission denied — enable it in your browser settings';
+      else if (err.code === 3) msg = '❌ Location request timed out — try again';
+      showLocationStatus(msg, 'error');
+      if (btn) { btn.disabled = false; btn.classList.remove('loading'); }
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+  );
+}
+
 function clearUserLocation() {
   userLocation = null;
   localStorage.removeItem('ubud_user_location');
@@ -830,6 +869,16 @@ function calculateDistance(lat1, lng1, lat2, lng2) {
 }
 
 // Switch between list and map view
+// Jump to the map showing the itinerary as an ordered route
+function showTripOnMap() {
+  if (itineraryCount() === 0) {
+    alert('Add some places to your trip first.');
+    return;
+  }
+  mapTripMode = true;
+  switchView('map');
+}
+
 function switchView(view) {
   currentView = view;
   
@@ -1054,18 +1103,24 @@ function updateInlineMapMarkers() {
       window.inlineMap.removeLayer(layer);
     }
   });
+  if (window.inlineTripRoute) { window.inlineMap.removeLayer(window.inlineTripRoute); window.inlineTripRoute = null; }
   
-  const filtered = getFilteredPlaces();
+  const filtered = getMapPlaces();
+  const routeLatLngs = [];
   
-  filtered.forEach(place => {
+  filtered.forEach((place, idx) => {
     if (!place.lat || !place.lng) return;
     
     const category = UBUD_DATA.categories.find(c => c.id === place.category);
     const icon = category?.icon || '📍';
+    const label = mapTripMode ? String(idx + 1) : icon;
+    const bg = mapTripMode ? '#FF6B4A' : '#22c55e';
+    const fontSize = mapTripMode ? '15px' : '18px';
+    const textColor = mapTripMode ? '#fff' : '#000';
     
     const customIcon = L.divIcon({
       className: 'custom-marker',
-      html: `<div style="width: 36px; height: 36px; background: #22c55e; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; border: 2px solid #0a0a0a; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">${icon}</div>`,
+      html: `<div style="width: 36px; height: 36px; background: ${bg}; color: ${textColor}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: ${fontSize}; font-weight: 800; border: 2px solid #231B2E; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">${label}</div>`,
       iconSize: [36, 36],
       iconAnchor: [18, 18]
     });
@@ -1074,12 +1129,17 @@ function updateInlineMapMarkers() {
       .addTo(window.inlineMap)
       .bindPopup(`
         <div style="font-family: Inter, sans-serif; min-width: 200px;">
-          <div style="font-weight: 600; font-size: 1rem; margin-bottom: 4px;">${icon} ${escapeHtml(place.name)}</div>
+          <div style="font-weight: 600; font-size: 1rem; margin-bottom: 4px;">${mapTripMode ? (idx + 1) + '. ' : icon + ' '}${escapeHtml(place.name)}</div>
           <div style="color: #888; font-size: 0.85rem; margin-bottom: 8px;">${escapeHtml(place.description.substring(0, 60))}...</div>
           <button onclick="openPlaceModal(${place.id})" style="background: #22c55e; color: #000; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">View Details</button>
         </div>
       `);
+    routeLatLngs.push([place.lat, place.lng]);
   });
+
+  if (mapTripMode && routeLatLngs.length >= 2) {
+    window.inlineTripRoute = L.polyline(routeLatLngs, { color: '#FF6B4A', weight: 3, opacity: 0.9 }).addTo(window.inlineMap);
+  }
   
   // Add user location marker (blue dot)
   if (userLocation && userLocation.lat && userLocation.lng) {
@@ -1137,11 +1197,21 @@ function initLeafletMap() {
   updateMapMarkers();
 }
 
+// Places to show on the map: the ordered itinerary in trip mode, otherwise the filtered list
+function getMapPlaces() {
+  if (mapTripMode) {
+    return itineraryPlaceIds()
+      .map(id => UBUD_DATA.places.find(p => p.id === id))
+      .filter(Boolean);
+  }
+  return getFilteredPlaces();
+}
+
 // Update map markers (supports both Google Maps and Leaflet)
 function updateMapMarkers() {
   if (!map) return;
   
-  const filtered = getFilteredPlaces();
+  const filtered = getMapPlaces();
   
   if (window.mapProvider === 'google') {
     // Google Maps markers
@@ -1236,16 +1306,22 @@ function updateMapMarkers() {
     // Leaflet markers
     markers.forEach(marker => map.removeLayer(marker));
     markers = [];
-    
-    filtered.forEach(place => {
+    if (window.tripRoute) { map.removeLayer(window.tripRoute); window.tripRoute = null; }
+
+    const routeLatLngs = [];
+    filtered.forEach((place, idx) => {
       if (!place.lat || !place.lng) return;
       
       const category = UBUD_DATA.categories.find(c => c.id === place.category);
       const icon = category ? category.icon : '📍';
+      const label = mapTripMode ? String(idx + 1) : icon;
+      const bg = mapTripMode ? '#FF6B4A' : '#22c55e';
+      const fontSize = mapTripMode ? '17px' : '20px';
+      const textColor = mapTripMode ? '#fff' : '#000';
       
       const customIcon = L.divIcon({
         className: 'custom-marker',
-        html: `<div style="width: 40px; height: 40px; background: #22c55e; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; border: 2px solid #0a0a0a; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">${icon}</div>`,
+        html: `<div style="width: 40px; height: 40px; background: ${bg}; color: ${textColor}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: ${fontSize}; font-weight: 800; border: 2px solid #231B2E; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">${label}</div>`,
         iconSize: [40, 40],
         iconAnchor: [20, 20]
       });
@@ -1254,14 +1330,20 @@ function updateMapMarkers() {
         .addTo(map)
         .bindPopup(`
           <div style="font-family: Inter, sans-serif; min-width: 200px;">
-            <div style="font-weight: 600; font-size: 1rem; margin-bottom: 4px;">${icon} ${escapeHtml(place.name)}</div>
+            <div style="font-weight: 600; font-size: 1rem; margin-bottom: 4px;">${mapTripMode ? (idx + 1) + '. ' : icon + ' '}${escapeHtml(place.name)}</div>
             <div style="color: #888; font-size: 0.85rem; margin-bottom: 8px;">${escapeHtml(place.description.substring(0, 60))}...</div>
             <button onclick="openPlaceModal(${place.id})" style="background: #22c55e; color: #000; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">View Details</button>
           </div>
         `);
       
       markers.push(marker);
+      routeLatLngs.push([place.lat, place.lng]);
     });
+
+    // Draw the ordered route line in trip mode
+    if (mapTripMode && routeLatLngs.length >= 2) {
+      window.tripRoute = L.polyline(routeLatLngs, { color: '#FF6B4A', weight: 3, opacity: 0.9 }).addTo(map);
+    }
     
     // Add user location marker (blue dot)
     if (userLocation && userLocation.lat && userLocation.lng) {
@@ -1355,6 +1437,7 @@ function toggleVibe(vibeId) {
 // Select category
 function selectCategory(category) {
   currentCategory = category;
+  mapTripMode = false; // filtering by category exits trip-on-map mode
   
   // Reset vibes and search when "All" is clicked
   if (category === 'all') {
@@ -1514,7 +1597,6 @@ function renderPlaces() {
   
   container.innerHTML = filtered.map((place, index) => {
     const category = UBUD_DATA.categories.find(c => c.id === place.category);
-    const isFav = favorites.includes(place.id);
     const inTrip = isInItinerary(place.id);
     const catStyle = getCategoryStyle(place.category);
     
@@ -1603,7 +1685,6 @@ function openPlaceModal(placeId) {
   if (!place) return;
   
   const category = UBUD_DATA.categories.find(c => c.id === place.category);
-  const isFav = favorites.includes(place.id);
   
   const modalBody = document.getElementById('modalBody');
   modalBody.innerHTML = `
@@ -1613,9 +1694,6 @@ function openPlaceModal(placeId) {
         <span class="category-tag">${category?.name || place.category}</span>
         ${place.area ? `<span class="area-tag">📍 ${escapeHtml(place.area)}</span>` : ''}
         ${renderPriceLevel(place.price_level)}
-        <button class="fav-btn ${isFav ? 'active' : ''}" onclick="toggleFavorite(${place.id}); updateModalFav(${place.id})" style="position: static; margin-left: auto;">
-          ${isFav ? '⭐' : '☆'}
-        </button>
       </div>
     </div>
     
@@ -1791,11 +1869,6 @@ function getCardMapsLink(place) {
   `;
 }
 
-// Update modal favorite button
-function updateModalFav(placeId) {
-  setTimeout(() => openPlaceModal(placeId), 50);
-}
-
 // Share place function
 async function sharePlace(placeId) {
   const place = UBUD_DATA.places.find(p => p.id === placeId);
@@ -1896,37 +1969,6 @@ function closeModal() {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeModal();
 });
-
-// Toggle favorite
-function toggleFavorite(placeId) {
-  const index = favorites.indexOf(placeId);
-  
-  if (index > -1) {
-    favorites.splice(index, 1);
-  } else {
-    favorites.push(placeId);
-  }
-  
-  localStorage.setItem('ubud_favorites', JSON.stringify(favorites));
-  updateFavCount();
-  
-  if (currentView === 'list') {
-    renderPlaces();
-  }
-}
-
-// Update favorite count display
-function updateFavCount() {
-  const favCountEl = document.getElementById('favCount');
-  const favCountNum = document.getElementById('favCountNum');
-  
-  if (favorites.length > 0) {
-    favCountEl.style.display = 'inline';
-    favCountNum.textContent = favorites.length;
-  } else {
-    favCountEl.style.display = 'none';
-  }
-}
 
 // Escape HTML to prevent XSS
 function escapeHtml(text) {

@@ -216,25 +216,45 @@ async function startServer() {
       places = [];
     }
     
+    const usePg = !!(process.env.DATABASE_URL || process.env.PGDATABASE);
+
     if (places.length === 0) {
-      console.log('📥 Database empty, attempting to restore from backup...');
-      try {
-        const restored = await importFromBackup(db);
-        if (restored > 0) {
-          console.log(`✅ Restored ${restored} places from backup`);
-        } else {
-          console.log('📭 No backup available, starting fresh');
+      console.log('📥 Database empty, seeding...');
+      let restored = 0;
+
+      // The JSON backup helpers use the SQLite driver API, so only use them on SQLite.
+      if (!usePg) {
+        try {
+          restored = await importFromBackup(db);
+          if (restored > 0) console.log(`✅ Restored ${restored} places from backup`);
+        } catch (backupErr) {
+          console.error('❌ Backup restore failed:', backupErr.message);
         }
-      } catch (backupErr) {
-        console.error('❌ Backup restore failed:', backupErr.message);
+      }
+
+      // Fallback (and the path for PostgreSQL): seed the canonical dataset from data.js.
+      if (restored === 0) {
+        try {
+          const dataPath = path.join(__dirname, 'data.js');
+          delete require.cache[require.resolve(dataPath)];
+          const { UBUD_DATA } = require(dataPath);
+          for (const place of UBUD_DATA.places) {
+            await upsertPlace(db, place);
+          }
+          console.log(`✅ Seeded ${UBUD_DATA.places.length} places from data.js`);
+        } catch (seedErr) {
+          console.error('❌ Seed from data.js failed:', seedErr.message);
+        }
       }
     } else {
       console.log(`✅ Database ready with ${places.length} places`);
-      // Export backup on startup to keep file current
-      try {
-        await exportPlaces(db);
-      } catch (exportErr) {
-        console.log('⚠️ Could not export backup:', exportErr.message);
+      // Keep the SQLite backup file current (Postgres persists on its own)
+      if (!usePg) {
+        try {
+          await exportPlaces(db);
+        } catch (exportErr) {
+          console.log('⚠️ Could not export backup:', exportErr.message);
+        }
       }
     }
     
