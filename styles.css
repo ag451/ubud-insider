@@ -761,6 +761,7 @@ body {
 
 .card-actions {
     align-items: center;
+    justify-content: flex-end;
 }
 
 .maps-link {
@@ -787,7 +788,6 @@ body {
     align-items: center;
     justify-content: center;
     gap: 6px;
-    margin-left: auto;
     padding: 9px 16px;
     background: var(--tangerine);
     border: 2px solid var(--ink);

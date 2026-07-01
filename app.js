@@ -1501,7 +1501,6 @@ function renderPlaces() {
         ${renderWhyThisPlace(place.why_this_place)}
         
         <div class="card-actions">
-          ${getCardMapsLink(place)}
           <button class="trip-btn ${inTrip ? 'active' : ''}" onclick="event.stopPropagation(); toggleItinerary(${place.id})" aria-label="${inTrip ? 'Remove from trip' : 'Add to trip'}">
             ${inTrip ? '✓ In trip' : '+ Trip'}
           </button>
