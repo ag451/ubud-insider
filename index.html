@@ -7,16 +7,19 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Ubud Insider | Local Recommendations</title>
-    <link rel="stylesheet" href="styles.css?v=34">
+    <link rel="stylesheet" href="styles.css?v=43">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <!-- Leaflet CSS (fallback map) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <!-- Apply saved theme before paint to avoid a flash -->
+    <script>if (localStorage.getItem('ubud_theme') === 'dark') document.documentElement.classList.add('dark');</script>
 </head>
 <body>
     <div class="app" id="appContainer">
         <!-- Header -->
         <header class="header">
+            <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle dark mode">🌙</button>
             <div class="logo-container">
                 <div class="logo-icon">🏔️</div>
                 <h1 class="logo">Ubud Insider</h1>
@@ -41,6 +44,13 @@
                     </svg>
                     Map
                 </button>
+                <button class="view-btn" data-view="trip">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="7" width="20" height="14" rx="2"></rect>
+                        <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"></path>
+                    </svg>
+                    Trip
+                </button>
             </div>
         </header>
 
@@ -59,6 +69,13 @@
                     </svg>
                 </button>
             </div>            
+            <button id="nearMeBtn" class="near-me-btn" onclick="useMyLocation()" aria-label="Find places near me">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path>
+                </svg>
+                Near me
+            </button>
             <div id="locationAutocomplete" class="location-autocomplete" style="display: none;"></div>
             <div id="locationStatus" class="location-status" style="display: none;"></div>
         </div>
@@ -102,8 +119,8 @@
         <div class="stats-bar">
             <span id="statsText">Showing all places</span>
             <div class="stats-actions">
-                <span class="favorites-count" id="favCount" style="display: none;">
-                    ⭐ <span id="favCountNum">0</span> saved
+                <span class="trip-count" id="tripCount" style="display: none;">
+                    🧳 <span id="tripCountNum">0</span> in trip
                 </span>
             </div>
         </div>
@@ -118,6 +135,27 @@
             <div class="empty-icon">🔍</div>
             <h3>No places found</h3>
             <p>Try adjusting your search or filters</p>
+        </div>
+
+        <!-- Trip / Itinerary View -->
+        <div class="trip-container" id="tripContainer" style="display: none;">
+            <div class="trip-toolbar">
+                <div class="trip-title-block">
+                    <h2 class="trip-heading">Your trip</h2>
+                    <span class="trip-subtitle" id="tripSubtitle"></span>
+                </div>
+                <div class="trip-toolbar-actions">
+                    <button class="trip-map-btn" onclick="showTripOnMap()">🗺 Show on map</button>
+                    <button class="trip-add-day-btn" onclick="addDay()">+ Add day</button>
+                    <button class="trip-clear-btn" onclick="clearItinerary()">Clear</button>
+                </div>
+            </div>
+            <div id="tripDays"></div>
+            <div class="trip-empty" id="tripEmpty" style="display: none;">
+                <div class="empty-icon">🧳</div>
+                <h3>Your trip is empty</h3>
+                <p>Browse the list and tap “+ Trip” to start planning your days.</p>
+            </div>
         </div>
 
         <!-- Map View - Inline for desktop, full screen for mobile -->
@@ -177,7 +215,9 @@
     <!-- Config and app -->
     <script src="data.js?v=21"></script>
     <script src="config.js?v=23"></script>
-    <script src="app.js?v=30"></script>
+    <!-- SortableJS for drag-and-drop itinerary reordering -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+    <script src="app.js?v=39"></script>
     
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>

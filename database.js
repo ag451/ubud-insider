@@ -103,6 +103,15 @@ async function initPostgres() {
   } catch (e) {
     console.log('Note: price_level column may already exist');
   }
+
+  // Web description columns (populated via Firecrawl)
+  try {
+    await pgPool.query('ALTER TABLE places ADD COLUMN IF NOT EXISTS web_description TEXT');
+    await pgPool.query('ALTER TABLE places ADD COLUMN IF NOT EXISTS web_description_source TEXT');
+    console.log('✅ web_description columns ready');
+  } catch (e) {
+    console.log('Note: web_description columns may already exist');
+  }
   
   return pgPool;
 }
@@ -168,16 +177,20 @@ function initSQLite() {
             last_generated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (place_id) REFERENCES places(id) ON DELETE CASCADE
           );
-          
-          -- Migration: Add price_level column if not exists
-          ALTER TABLE places ADD COLUMN price_level INTEGER;
         `, (err) => {
           if (err) reject(err);
           else {
-            console.log('✅ SQLite tables ready');
-            
-            // SQLite doesn't support IF NOT EXISTS on ADD COLUMN, so ignore error
-            resolve(db);
+            // Migration for legacy databases created before price_level existed.
+            // SQLite has no "ADD COLUMN IF NOT EXISTS", so run it separately and
+            // ignore the "duplicate column name" error on fresh/already-migrated DBs.
+            db.run('ALTER TABLE places ADD COLUMN price_level INTEGER', () => {
+              db.run('ALTER TABLE places ADD COLUMN web_description TEXT', () => {
+                db.run('ALTER TABLE places ADD COLUMN web_description_source TEXT', () => {
+                  console.log('✅ SQLite tables ready');
+                  resolve(db);
+                });
+              });
+            });
           }
         });
       }
@@ -464,6 +477,26 @@ async function setWhyThisPlace(db, placeId, sentence, tags) {
   }
 }
 
+async function setWebDescription(db, placeId, description, sourceUrl) {
+  if (usePostgres()) {
+    await db.query(
+      'UPDATE places SET web_description = $1, web_description_source = $2 WHERE id = $3',
+      [description, sourceUrl || null, placeId]
+    );
+  } else {
+    return new Promise((resolve, reject) => {
+      db.run(
+        'UPDATE places SET web_description = ?, web_description_source = ? WHERE id = ?',
+        [description, sourceUrl || null, placeId],
+        function (err) {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+  }
+}
+
 async function getAllPlacesWithWhy(db) {
   if (usePostgres()) {
     const result = await db.query(`
@@ -506,5 +539,6 @@ module.exports = {
   importInitialData,
   getWhyThisPlace,
   setWhyThisPlace,
+  setWebDescription,
   getAllPlacesWithWhy
 };

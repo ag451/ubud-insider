@@ -12,10 +12,12 @@ const {
   importInitialData,
   getWhyThisPlace,
   setWhyThisPlace,
+  setWebDescription,
   getAllPlacesWithWhy
 } = require('./database');
 const { analyzeReviews } = require('./reviewAnalyzer');
 const { exportPlaces, importFromBackup } = require('./backup');
+const firecrawl = require('./firecrawl');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -214,25 +216,45 @@ async function startServer() {
       places = [];
     }
     
+    const usePg = !!(process.env.DATABASE_URL || process.env.PGDATABASE);
+
     if (places.length === 0) {
-      console.log('📥 Database empty, attempting to restore from backup...');
-      try {
-        const restored = await importFromBackup(db);
-        if (restored > 0) {
-          console.log(`✅ Restored ${restored} places from backup`);
-        } else {
-          console.log('📭 No backup available, starting fresh');
+      console.log('📥 Database empty, seeding...');
+      let restored = 0;
+
+      // The JSON backup helpers use the SQLite driver API, so only use them on SQLite.
+      if (!usePg) {
+        try {
+          restored = await importFromBackup(db);
+          if (restored > 0) console.log(`✅ Restored ${restored} places from backup`);
+        } catch (backupErr) {
+          console.error('❌ Backup restore failed:', backupErr.message);
         }
-      } catch (backupErr) {
-        console.error('❌ Backup restore failed:', backupErr.message);
+      }
+
+      // Fallback (and the path for PostgreSQL): seed the canonical dataset from data.js.
+      if (restored === 0) {
+        try {
+          const dataPath = path.join(__dirname, 'data.js');
+          delete require.cache[require.resolve(dataPath)];
+          const { UBUD_DATA } = require(dataPath);
+          for (const place of UBUD_DATA.places) {
+            await upsertPlace(db, place);
+          }
+          console.log(`✅ Seeded ${UBUD_DATA.places.length} places from data.js`);
+        } catch (seedErr) {
+          console.error('❌ Seed from data.js failed:', seedErr.message);
+        }
       }
     } else {
       console.log(`✅ Database ready with ${places.length} places`);
-      // Export backup on startup to keep file current
-      try {
-        await exportPlaces(db);
-      } catch (exportErr) {
-        console.log('⚠️ Could not export backup:', exportErr.message);
+      // Keep the SQLite backup file current (Postgres persists on its own)
+      if (!usePg) {
+        try {
+          await exportPlaces(db);
+        } catch (exportErr) {
+          console.log('⚠️ Could not export backup:', exportErr.message);
+        }
       }
     }
     
@@ -600,6 +622,63 @@ async function fetchGooglePlaceDetails(placeId) {
   
   return fetchFromGoogle(detailsUrl);
 }
+
+// ========== FIRECRAWL DESCRIPTIONS ==========
+
+// Fetch a web description for a single place via Firecrawl
+app.post('/api/places/:id/description/fetch', async (req, res) => {
+  if (!firecrawl.isConfigured()) {
+    return res.status(400).json({ error: 'FIRECRAWL_API_KEY not configured' });
+  }
+  try {
+    const id = parseInt(req.params.id);
+    const place = await getPlaceById(db, id);
+    if (!place) {
+      return res.status(404).json({ error: 'Place not found' });
+    }
+    const { description, source_url } = await firecrawl.fetchPlaceDescription(place);
+    await setWebDescription(db, id, description, source_url);
+    res.json({ success: true, id, description, source_url });
+  } catch (err) {
+    console.error('Firecrawl description error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Batch: fetch web descriptions for all places (skips ones that already have one unless force)
+app.post('/api/places/descriptions/batch-fetch', async (req, res) => {
+  if (!firecrawl.isConfigured()) {
+    return res.status(400).json({ error: 'FIRECRAWL_API_KEY not configured' });
+  }
+  try {
+    const { force = false } = req.body || {};
+    const places = await getAllPlaces(db);
+    const results = [];
+
+    for (const place of places) {
+      if (!force && place.web_description) {
+        results.push({ id: place.id, name: place.name, status: 'skipped' });
+        continue;
+      }
+      try {
+        const { description, source_url } = await firecrawl.fetchPlaceDescription(place);
+        await setWebDescription(db, place.id, description, source_url);
+        results.push({ id: place.id, name: place.name, status: 'fetched', description });
+      } catch (err) {
+        console.error(`❌ Firecrawl ${place.name}:`, err.message);
+        results.push({ id: place.id, name: place.name, status: 'error', error: err.message });
+      }
+      // Be gentle with the API / rate limits.
+      await new Promise((r) => setTimeout(r, 400));
+    }
+
+    const fetched = results.filter((r) => r.status === 'fetched').length;
+    res.json({ message: `Fetched ${fetched} of ${results.length} places`, results });
+  } catch (err) {
+    console.error('Firecrawl batch error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ========== DATABASE API ROUTES ==========
 
