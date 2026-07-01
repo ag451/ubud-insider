@@ -54,6 +54,34 @@
     --font-sans: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
+/* Dark variant ("neon on charcoal") — inverts paper/ink, keeps brand colours (slightly desaturated) */
+html.dark {
+    --paper: #1A1622;
+    --card: #241E30;
+    --ink: #FFF8EF;
+
+    --sunshine: #E9BA45;
+    --tangerine: #F26A4B;
+    --bubblegum: #F065A0;
+    --grape: #8A70FF;
+    --mint: #3FD0AB;
+    --sky: #5AACF5;
+
+    --bg-secondary: #241E30;
+    --bg-tertiary: #2E2740;
+    --bg-hover: #2E2740;
+    --bg-elevated: #2A2338;
+
+    --text-secondary: #C6B9D4;
+    --text-tertiary: #C6B9D4;
+    --text-muted: #9A8FA6;
+
+    --chip-bg: #322A44;
+    --chip-text: #F0C088;
+    --dashed-border: #5A4E6B;
+    --border-subtle: #3A3350;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -121,6 +149,45 @@ body {
     font-weight: 600;
     max-width: 400px;
     margin: 0 auto;
+}
+
+/* Theme toggle */
+.theme-toggle {
+    position: absolute;
+    top: 24px;
+    right: 0;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--card);
+    border: 2px solid var(--ink);
+    border-radius: var(--radius-full);
+    box-shadow: var(--stamp);
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    z-index: 20;
+}
+
+.theme-toggle:hover {
+    transform: scale(1.05);
+}
+
+.theme-toggle:active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 var(--ink);
+}
+
+@media (max-width: 768px) {
+    .theme-toggle {
+        top: 18px;
+        width: 40px;
+        height: 40px;
+        font-size: 1.125rem;
+    }
 }
 
 /* View Toggle */

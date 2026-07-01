@@ -11,6 +11,26 @@ let whyThisPlaceCache = {}; // Cache for Why This Place data
 
 const API_BASE = '/api';
 
+// ===== Theme (light / dark) =====
+function applyTheme(theme) {
+  const isDark = theme === 'dark';
+  document.documentElement.classList.toggle('dark', isDark);
+  const btn = document.getElementById('themeToggle');
+  if (btn) {
+    btn.textContent = isDark ? '☀️' : '🌙';
+    btn.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+  }
+}
+
+function toggleTheme() {
+  const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+  localStorage.setItem('ubud_theme', next);
+  applyTheme(next);
+}
+
+// Sync button label with the theme applied pre-paint
+applyTheme(localStorage.getItem('ubud_theme') || 'light');
+
 // Load places from database
 async function loadPlacesFromDB() {
   try {
