@@ -1172,6 +1172,19 @@ body {
     line-height: 1.6;
 }
 
+.modal-source-link {
+    display: inline-block;
+    margin-top: 8px;
+    color: var(--tangerine);
+    font-size: 0.8125rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.modal-source-link:hover {
+    opacity: 0.75;
+}
+
 .rating-stars {
     color: var(--favorite);
     font-size: 1.125rem;

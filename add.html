@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Add Place | Ubud Insider</title>
-    <link rel="stylesheet" href="styles.css?v=37">
+    <link rel="stylesheet" href="styles.css?v=39">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script>if (localStorage.getItem('ubud_theme') === 'dark') document.documentElement.classList.add('dark');</script>
@@ -399,6 +399,22 @@
                     💰 Update All Price Levels
                 </button>
                 <div id="priceProgress" style="margin-top: 12px; font-size: 0.875rem; color: var(--text-secondary);"></div>
+            </div>
+
+            <div style="border-top: 1px solid var(--border); margin: 32px 0;"></div>
+
+            <div class="form-group">
+                <h3 style="margin-bottom: 16px; font-size: 1.125rem;">🔥 Fetch Descriptions (Firecrawl)</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 0.875rem;">
+                    Pull a short web description for each place using the Firecrawl API (from the place's website or a web search). Saved to the "About this place" section. Requires FIRECRAWL_API_KEY on the server.
+                </p>
+                <button id="descBtn" class="btn-primary" onclick="fetchDescriptions(false)">
+                    🔥 Fetch Missing Descriptions
+                </button>
+                <button id="descForceBtn" class="btn-secondary" onclick="fetchDescriptions(true)" style="margin-left: 8px;">
+                    🔄 Refetch All
+                </button>
+                <div id="descProgress" style="margin-top: 12px; font-size: 0.875rem; color: var(--text-secondary);"></div>
             </div>
         </div>
     </div>
@@ -930,6 +946,54 @@
                 btn.textContent = '📍 Update All Coordinates';
             }
         }
+        async function fetchDescriptions(force) {
+            const btn = document.getElementById(force ? 'descForceBtn' : 'descBtn');
+            const otherBtn = document.getElementById(force ? 'descBtn' : 'descForceBtn');
+            const progress = document.getElementById('descProgress');
+            btn.disabled = true;
+            if (otherBtn) otherBtn.disabled = true;
+            btn.textContent = force ? '🔄 Refetching...' : '🔥 Fetching...';
+            progress.textContent = 'Contacting Firecrawl... this can take a few minutes.';
+
+            try {
+                const response = await fetch('/api/places/descriptions/batch-fetch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ force })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to fetch descriptions');
+                }
+
+                const fetched = (data.results || []).filter(r => r.status === 'fetched').length;
+                const skipped = (data.results || []).filter(r => r.status === 'skipped').length;
+                const errors = (data.results || []).filter(r => r.status === 'error').length;
+
+                let message = `✅ Fetched: ${fetched}`;
+                if (skipped > 0) message += ` | Skipped: ${skipped}`;
+                if (errors > 0) message += ` | Errors: ${errors}`;
+                showAlert('toolsAlert', message, errors > 0 ? 'error' : 'success');
+                progress.textContent = data.message || '';
+
+                const samples = (data.results || []).filter(r => r.description).slice(0, 5);
+                if (samples.length > 0) {
+                    console.log('Sample descriptions:');
+                    samples.forEach(s => console.log(`  ${s.name}: "${s.description}"`));
+                }
+            } catch (err) {
+                console.error('Description fetch error:', err);
+                showAlert('toolsAlert', '❌ ' + err.message, 'error');
+                progress.textContent = '';
+            } finally {
+                btn.disabled = false;
+                if (otherBtn) otherBtn.disabled = false;
+                btn.textContent = force ? '🔄 Refetch All' : '🔥 Fetch Missing Descriptions';
+            }
+        }
+
         async function updatePriceLevels() {
             const btn = document.getElementById('priceBtn');
             const progress = document.getElementById('priceProgress');

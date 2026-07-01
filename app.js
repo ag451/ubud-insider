@@ -1582,6 +1582,14 @@ function openPlaceModal(placeId) {
       <div class="modal-section-title">About</div>
       <p class="modal-text">${escapeHtml(place.description)}</p>
     </div>
+
+    ${place.web_description ? `
+      <div class="modal-section">
+        <div class="modal-section-title">About this place</div>
+        <p class="modal-text">${escapeHtml(place.web_description)}</p>
+        ${place.web_description_source ? `<a class="modal-source-link" href="${place.web_description_source}" target="_blank" rel="noopener">Source ↗</a>` : ''}
+      </div>
+    ` : ''}
     
     ${renderWhyThisPlace(place.why_this_place)}
     

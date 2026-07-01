@@ -12,10 +12,12 @@ const {
   importInitialData,
   getWhyThisPlace,
   setWhyThisPlace,
+  setWebDescription,
   getAllPlacesWithWhy
 } = require('./database');
 const { analyzeReviews } = require('./reviewAnalyzer');
 const { exportPlaces, importFromBackup } = require('./backup');
+const firecrawl = require('./firecrawl');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -600,6 +602,63 @@ async function fetchGooglePlaceDetails(placeId) {
   
   return fetchFromGoogle(detailsUrl);
 }
+
+// ========== FIRECRAWL DESCRIPTIONS ==========
+
+// Fetch a web description for a single place via Firecrawl
+app.post('/api/places/:id/description/fetch', async (req, res) => {
+  if (!firecrawl.isConfigured()) {
+    return res.status(400).json({ error: 'FIRECRAWL_API_KEY not configured' });
+  }
+  try {
+    const id = parseInt(req.params.id);
+    const place = await getPlaceById(db, id);
+    if (!place) {
+      return res.status(404).json({ error: 'Place not found' });
+    }
+    const { description, source_url } = await firecrawl.fetchPlaceDescription(place);
+    await setWebDescription(db, id, description, source_url);
+    res.json({ success: true, id, description, source_url });
+  } catch (err) {
+    console.error('Firecrawl description error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Batch: fetch web descriptions for all places (skips ones that already have one unless force)
+app.post('/api/places/descriptions/batch-fetch', async (req, res) => {
+  if (!firecrawl.isConfigured()) {
+    return res.status(400).json({ error: 'FIRECRAWL_API_KEY not configured' });
+  }
+  try {
+    const { force = false } = req.body || {};
+    const places = await getAllPlaces(db);
+    const results = [];
+
+    for (const place of places) {
+      if (!force && place.web_description) {
+        results.push({ id: place.id, name: place.name, status: 'skipped' });
+        continue;
+      }
+      try {
+        const { description, source_url } = await firecrawl.fetchPlaceDescription(place);
+        await setWebDescription(db, place.id, description, source_url);
+        results.push({ id: place.id, name: place.name, status: 'fetched', description });
+      } catch (err) {
+        console.error(`❌ Firecrawl ${place.name}:`, err.message);
+        results.push({ id: place.id, name: place.name, status: 'error', error: err.message });
+      }
+      // Be gentle with the API / rate limits.
+      await new Promise((r) => setTimeout(r, 400));
+    }
+
+    const fetched = results.filter((r) => r.status === 'fetched').length;
+    res.json({ message: `Fetched ${fetched} of ${results.length} places`, results });
+  } catch (err) {
+    console.error('Firecrawl batch error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ========== DATABASE API ROUTES ==========
 
