@@ -1210,9 +1210,11 @@ function renderPlaces() {
   container.innerHTML = filtered.map((place, index) => {
     const category = UBUD_DATA.categories.find(c => c.id === place.category);
     const isFav = favorites.includes(place.id);
+    const catStyle = getCategoryStyle(place.category);
     
     return `
-      <article class="place-card" style="animation-delay: ${index * 0.05}s" onclick="openPlaceModal(${place.id})">
+      <article class="place-card ${catStyle.shadow}" style="animation-delay: ${index * 0.05}s" onclick="openPlaceModal(${place.id})">
+        ${catStyle.sticker ? `<span class="card-sticker">${catStyle.sticker}</span>` : ''}
         <div class="place-header">
           <h3 class="place-name">${escapeHtml(place.name)}</h3>
         </div>
@@ -1224,7 +1226,7 @@ function renderPlaces() {
         </button>
         
         <div class="place-meta">
-          <span class="category-tag">${category?.icon || ''} ${category?.name || place.category}</span>
+          <span class="category-tag ${catStyle.pill}">${category?.icon || ''} ${category?.name || place.category}</span>
           ${place.area ? `<span class="area-tag">📍 ${escapeHtml(place.area)}</span>` : ''}
           ${place.distance ? `<span class="distance-tag">${place.distance.toFixed(1)} km</span>` : ''}
           ${place.rating ? `<span class="place-rating"><span class="star">★</span> ${place.rating}</span>` : ''}
@@ -1260,6 +1262,27 @@ function renderVibeTags(vibes) {
     if (!vibe) return '';
     return `<span class="vibe-tag">${vibe.icon} ${vibe.name}</span>`;
   }).join('');
+}
+
+// Maps each category to a palette colour (shadow + pill classes) and a playful sticker.
+// Styling only — used to colour-code cards per the London Planner design system.
+const CATEGORY_STYLE = {
+  breakfast:  { shadow: 's-sun',       pill: 'p-sun',       sticker: '☀️' },
+  dinner:     { shadow: 's-pink',      pill: 'p-pink',      sticker: '🌙' },
+  vegetarian: { shadow: 's-mint',      pill: 'p-mint',      sticker: '🌱' },
+  warung:     { shadow: 's-tangerine', pill: 'p-tangerine', sticker: '🌶️' },
+  finedining: { shadow: 's-grape',     pill: 'p-grape',     sticker: '🥂' },
+  drinks:     { shadow: 's-sky',       pill: 'p-sky',       sticker: '🍹' },
+  yoga:       { shadow: 's-grape',     pill: 'p-grape',     sticker: '🕉️' },
+  healers:    { shadow: 's-grape',     pill: 'p-grape',     sticker: '🔮' },
+  spa:        { shadow: 's-pink',      pill: 'p-pink',      sticker: '🌸' },
+  walks:      { shadow: 's-mint',      pill: 'p-mint',      sticker: '🍃' },
+  excursions: { shadow: 's-sky',       pill: 'p-sky',       sticker: '🏝️' },
+  fitness:    { shadow: 's-sky',       pill: 'p-sky',       sticker: '🔥' }
+};
+
+function getCategoryStyle(categoryId) {
+  return CATEGORY_STYLE[categoryId] || { shadow: 's-grape', pill: 'p-grape', sticker: '📍' };
 }
 
 // Helper function to render price level indicator
