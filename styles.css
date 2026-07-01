@@ -430,17 +430,22 @@ body {
 
 /* Places List */
 .places-container {
-    display: grid;
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 14px;
     width: 100%;
     max-width: 100%;
 }
 
-/* 2-up grid on desktop */
+/* 2-up layout on desktop (flex-wrap so it works with the inline display:flex set in JS) */
 @media (min-width: 769px) {
     .places-container {
-        grid-template-columns: repeat(2, 1fr);
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: stretch;
+    }
+    .places-container .place-card {
+        width: calc(50% - 7px);
     }
 }
 
