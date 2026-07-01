@@ -1711,3 +1711,283 @@ body {
     font-weight: 700;
     color: var(--ink);
 }
+
+/* ===== Itinerary / Trip builder ===== */
+
+/* "Add to trip" button on cards & modal */
+.trip-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 9px 14px;
+    background: var(--card);
+    border: 2px solid var(--ink);
+    border-radius: var(--radius-md);
+    color: var(--ink);
+    font-size: 0.8125rem;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: var(--stamp);
+    transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s ease;
+}
+
+.trip-btn:hover {
+    background: var(--chip-bg);
+}
+
+.trip-btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 var(--ink);
+}
+
+.trip-btn.active {
+    background: var(--mint);
+    color: #0A3D30;
+}
+
+/* Trip count chip in the stats bar */
+.trip-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 10px;
+    background: var(--chip-bg);
+    color: var(--chip-text);
+    border-radius: var(--radius-full);
+    font-weight: 800;
+}
+
+/* Trip view container */
+.trip-container {
+    padding-top: 4px;
+}
+
+.trip-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.trip-heading {
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: -0.6px;
+    color: var(--ink);
+}
+
+.trip-subtitle {
+    display: block;
+    margin-top: 2px;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.trip-toolbar-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.trip-add-day-btn {
+    padding: 9px 16px;
+    background: var(--tangerine);
+    border: 2px solid var(--ink);
+    border-radius: var(--radius-md);
+    color: #fff;
+    font-size: 0.8125rem;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: var(--stamp);
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+.trip-add-day-btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 var(--ink);
+}
+
+.trip-clear-btn {
+    padding: 9px 16px;
+    background: var(--card);
+    border: 2px solid var(--ink);
+    border-radius: var(--radius-md);
+    color: var(--ink);
+    font-size: 0.8125rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.trip-clear-btn:hover {
+    background: var(--chip-bg);
+}
+
+/* Day group */
+.trip-day {
+    background: var(--card);
+    border: 2px solid var(--ink);
+    border-radius: 18px;
+    padding: 16px 18px;
+    margin-bottom: 16px;
+    box-shadow: 4px 4px 0 var(--ink);
+}
+
+.trip-day-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.trip-day-title {
+    font-size: 1.0625rem;
+    font-weight: 800;
+    color: var(--ink);
+    letter-spacing: -0.3px;
+}
+
+.trip-day-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.trip-mini-btn {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--card);
+    border: 2px solid var(--ink);
+    border-radius: var(--radius-sm);
+    color: var(--ink);
+    font-size: 0.8125rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.08s ease;
+}
+
+.trip-mini-btn:hover {
+    background: var(--chip-bg);
+}
+
+.trip-mini-btn:active {
+    transform: scale(0.92);
+}
+
+.trip-mini-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.trip-day-items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.trip-day-empty {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    padding: 4px 2px;
+}
+
+/* Individual trip item */
+.trip-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--card);
+    border: 2px solid var(--ink);
+    border-radius: var(--radius-lg);
+    padding: 10px 12px;
+    box-shadow: 3px 3px 0 var(--ink);
+}
+
+.trip-item.s-sun { box-shadow: 3px 3px 0 var(--sunshine); }
+.trip-item.s-mint { box-shadow: 3px 3px 0 var(--mint); }
+.trip-item.s-grape { box-shadow: 3px 3px 0 var(--grape); }
+.trip-item.s-pink { box-shadow: 3px 3px 0 var(--bubblegum); }
+.trip-item.s-tangerine { box-shadow: 3px 3px 0 var(--tangerine); }
+.trip-item.s-sky { box-shadow: 3px 3px 0 var(--sky); }
+
+.trip-item-reorder {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.trip-item-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    align-items: flex-start;
+    cursor: pointer;
+}
+
+.trip-item-name {
+    font-size: 0.9375rem;
+    font-weight: 800;
+    color: var(--ink);
+    letter-spacing: -0.2px;
+    overflow-wrap: break-word;
+    max-width: 100%;
+}
+
+.trip-item-area {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.trip-remove-btn {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--card);
+    border: 2px solid var(--ink);
+    border-radius: var(--radius-full);
+    color: var(--ink);
+    font-size: 0.9375rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.08s ease;
+}
+
+.trip-remove-btn:hover {
+    background: var(--bubblegum);
+    color: #fff;
+}
+
+.trip-remove-btn:active {
+    transform: scale(0.92);
+}
+
+.trip-empty {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.trip-empty h3 {
+    color: var(--ink);
+    margin-bottom: 8px;
+    font-size: 1.25rem;
+    font-weight: 800;
+}
+
+.trip-empty p {
+    color: var(--text-muted);
+    font-weight: 600;
+}

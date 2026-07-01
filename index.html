@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Ubud Insider | Local Recommendations</title>
-    <link rel="stylesheet" href="styles.css?v=37">
+    <link rel="stylesheet" href="styles.css?v=38">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <!-- Leaflet CSS (fallback map) -->
@@ -43,6 +43,13 @@
                         <line x1="16" y1="6" x2="16" y2="22"></line>
                     </svg>
                     Map
+                </button>
+                <button class="view-btn" data-view="trip">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="7" width="20" height="14" rx="2"></rect>
+                        <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"></path>
+                    </svg>
+                    Trip
                 </button>
             </div>
         </header>
@@ -105,6 +112,9 @@
         <div class="stats-bar">
             <span id="statsText">Showing all places</span>
             <div class="stats-actions">
+                <span class="trip-count" id="tripCount" style="display: none;">
+                    🧳 <span id="tripCountNum">0</span> in trip
+                </span>
                 <span class="favorites-count" id="favCount" style="display: none;">
                     ⭐ <span id="favCountNum">0</span> saved
                 </span>
@@ -121,6 +131,26 @@
             <div class="empty-icon">🔍</div>
             <h3>No places found</h3>
             <p>Try adjusting your search or filters</p>
+        </div>
+
+        <!-- Trip / Itinerary View -->
+        <div class="trip-container" id="tripContainer" style="display: none;">
+            <div class="trip-toolbar">
+                <div class="trip-title-block">
+                    <h2 class="trip-heading">Your trip</h2>
+                    <span class="trip-subtitle" id="tripSubtitle"></span>
+                </div>
+                <div class="trip-toolbar-actions">
+                    <button class="trip-add-day-btn" onclick="addDay()">+ Add day</button>
+                    <button class="trip-clear-btn" onclick="clearItinerary()">Clear</button>
+                </div>
+            </div>
+            <div id="tripDays"></div>
+            <div class="trip-empty" id="tripEmpty" style="display: none;">
+                <div class="empty-icon">🧳</div>
+                <h3>Your trip is empty</h3>
+                <p>Browse the list and tap “+ Trip” to start planning your days.</p>
+            </div>
         </div>
 
         <!-- Map View - Inline for desktop, full screen for mobile -->
@@ -180,7 +210,7 @@
     <!-- Config and app -->
     <script src="data.js?v=21"></script>
     <script src="config.js?v=23"></script>
-    <script src="app.js?v=32"></script>
+    <script src="app.js?v=33"></script>
     
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>

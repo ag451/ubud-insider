@@ -31,6 +31,209 @@ function toggleTheme() {
 // Sync button label with the theme applied pre-paint
 applyTheme(localStorage.getItem('ubud_theme') || 'light');
 
+// ===== Itinerary / Trip builder (client-side, localStorage) =====
+let itinerary = loadItinerary();
+
+function newDayId() {
+  return 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function loadItinerary() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('ubud_itinerary') || 'null');
+    if (raw && Array.isArray(raw.days) && raw.days.length > 0) return raw;
+  } catch (e) { /* ignore malformed data */ }
+  return { version: 1, days: [{ id: newDayId(), label: 'Day 1', date: null, items: [] }] };
+}
+
+function saveItinerary() {
+  localStorage.setItem('ubud_itinerary', JSON.stringify(itinerary));
+}
+
+function itineraryPlaceIds() {
+  return itinerary.days.reduce((acc, d) => acc.concat(d.items.map(i => i.placeId)), []);
+}
+
+function isInItinerary(placeId) {
+  return itineraryPlaceIds().includes(placeId);
+}
+
+function itineraryCount() {
+  return itineraryPlaceIds().length;
+}
+
+function addToItinerary(placeId, dayId) {
+  if (isInItinerary(placeId)) return;
+  const day = (dayId && itinerary.days.find(d => d.id === dayId)) || itinerary.days[0];
+  day.items.push({ placeId, note: '', time: '' });
+  saveItinerary();
+  updateTripCount();
+}
+
+function removeFromItinerary(placeId) {
+  itinerary.days.forEach(d => { d.items = d.items.filter(i => i.placeId !== placeId); });
+  saveItinerary();
+  updateTripCount();
+}
+
+function toggleItinerary(placeId) {
+  if (isInItinerary(placeId)) removeFromItinerary(placeId);
+  else addToItinerary(placeId);
+
+  if (currentView === 'list') renderPlaces();
+  if (currentView === 'trip') renderItinerary();
+}
+
+function addDay() {
+  itinerary.days.push({ id: newDayId(), label: 'Day ' + (itinerary.days.length + 1), date: null, items: [] });
+  saveItinerary();
+  renderItinerary();
+}
+
+function relabelAutoDays() {
+  itinerary.days.forEach((d, i) => {
+    if (/^Day \d+$/.test(d.label)) d.label = 'Day ' + (i + 1);
+  });
+}
+
+function deleteDay(dayId) {
+  if (itinerary.days.length <= 1) {
+    itinerary.days[0].items = [];
+  } else {
+    itinerary.days = itinerary.days.filter(d => d.id !== dayId);
+    relabelAutoDays();
+  }
+  saveItinerary();
+  renderItinerary();
+  updateTripCount();
+  if (currentView === 'list') renderPlaces();
+}
+
+function renameDay(dayId) {
+  const d = itinerary.days.find(x => x.id === dayId);
+  if (!d) return;
+  const name = prompt('Rename day', d.label);
+  if (name && name.trim()) {
+    d.label = name.trim();
+    saveItinerary();
+    renderItinerary();
+  }
+}
+
+function clearItinerary() {
+  if (!confirm('Clear your whole trip?')) return;
+  itinerary = { version: 1, days: [{ id: newDayId(), label: 'Day 1', date: null, items: [] }] };
+  saveItinerary();
+  renderItinerary();
+  updateTripCount();
+  if (currentView === 'list') renderPlaces();
+}
+
+// Move an item up/down; at a day boundary it hops to the adjacent day.
+function moveItem(dayId, index, dir) {
+  const di = itinerary.days.findIndex(d => d.id === dayId);
+  if (di < 0) return;
+  const day = itinerary.days[di];
+  const item = day.items[index];
+  if (!item) return;
+
+  if (dir === -1) {
+    if (index > 0) {
+      day.items.splice(index, 1);
+      day.items.splice(index - 1, 0, item);
+    } else if (di > 0) {
+      day.items.splice(index, 1);
+      itinerary.days[di - 1].items.push(item);
+    } else { return; }
+  } else {
+    if (index < day.items.length - 1) {
+      day.items.splice(index, 1);
+      day.items.splice(index + 1, 0, item);
+    } else if (di < itinerary.days.length - 1) {
+      day.items.splice(index, 1);
+      itinerary.days[di + 1].items.unshift(item);
+    } else { return; }
+  }
+  saveItinerary();
+  renderItinerary();
+}
+
+function updateTripCount() {
+  const el = document.getElementById('tripCount');
+  const num = document.getElementById('tripCountNum');
+  if (!el || !num) return;
+  const count = itineraryCount();
+  if (count > 0) {
+    el.style.display = 'inline-flex';
+    num.textContent = count;
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+// Render the Trip view (day groups + reorderable place items)
+function renderItinerary() {
+  const daysContainer = document.getElementById('tripDays');
+  const tripEmpty = document.getElementById('tripEmpty');
+  const subtitle = document.getElementById('tripSubtitle');
+  if (!daysContainer) return;
+
+  const total = itineraryCount();
+  const dayCount = itinerary.days.length;
+  if (subtitle) {
+    subtitle.textContent = total === 0
+      ? 'Add places from the list to start planning'
+      : `${total} place${total !== 1 ? 's' : ''} across ${dayCount} day${dayCount !== 1 ? 's' : ''}`;
+  }
+
+  daysContainer.innerHTML = itinerary.days.map((day, di) => {
+    const itemsHtml = day.items.length === 0
+      ? `<p class="trip-day-empty">No places yet.</p>`
+      : day.items.map((item, idx) => renderTripItem(day, di, idx)).join('');
+    return `
+      <section class="trip-day">
+        <div class="trip-day-header">
+          <h3 class="trip-day-title">${escapeHtml(day.label)}</h3>
+          <div class="trip-day-actions">
+            <button class="trip-mini-btn" onclick="renameDay('${day.id}')" aria-label="Rename day" title="Rename day">✎</button>
+            <button class="trip-mini-btn" onclick="deleteDay('${day.id}')" aria-label="Delete day" title="Delete day">🗑</button>
+          </div>
+        </div>
+        <div class="trip-day-items">${itemsHtml}</div>
+      </section>
+    `;
+  }).join('');
+
+  if (tripEmpty) tripEmpty.style.display = total === 0 ? 'block' : 'none';
+}
+
+function renderTripItem(day, di, idx) {
+  const item = day.items[idx];
+  const place = UBUD_DATA.places.find(p => p.id === item.placeId);
+  if (!place) return '';
+  const category = UBUD_DATA.categories.find(c => c.id === place.category);
+  const catStyle = getCategoryStyle(place.category);
+
+  const isFirstOverall = di === 0 && idx === 0;
+  const lastDi = itinerary.days.length - 1;
+  const isLastOverall = di === lastDi && idx === itinerary.days[di].items.length - 1;
+
+  return `
+    <article class="trip-item ${catStyle.shadow}">
+      <div class="trip-item-reorder">
+        <button class="trip-mini-btn" onclick="moveItem('${day.id}', ${idx}, -1)" ${isFirstOverall ? 'disabled' : ''} aria-label="Move up">▲</button>
+        <button class="trip-mini-btn" onclick="moveItem('${day.id}', ${idx}, 1)" ${isLastOverall ? 'disabled' : ''} aria-label="Move down">▼</button>
+      </div>
+      <div class="trip-item-body" onclick="openPlaceModal(${place.id})">
+        <span class="category-tag ${catStyle.pill}">${category?.icon || ''} ${category?.name || place.category}</span>
+        <h4 class="trip-item-name">${escapeHtml(place.name)}</h4>
+        ${place.area ? `<span class="trip-item-area">📍 ${escapeHtml(place.area)}</span>` : ''}
+      </div>
+      <button class="trip-remove-btn" onclick="removeFromItinerary(${place.id}); renderItinerary(); if (currentView === 'list') renderPlaces();" aria-label="Remove from trip" title="Remove from trip">✕</button>
+    </article>
+  `;
+}
+
 // Load places from database
 async function loadPlacesFromDB() {
   try {
@@ -71,6 +274,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderVibes();
   renderPlaces();
   updateFavCount();
+  updateTripCount();
   setupEventListeners();
   // Map is initialized on demand when user switches to map view
   
@@ -83,6 +287,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Clear the URL parameter without reloading
       window.history.replaceState({}, document.title, window.location.pathname);
     }, 500);
+  }
+
+  // Restore view from URL hash (#trip / #map / #list) for bookmarking/sharing
+  const hashView = (window.location.hash || '').replace('#', '');
+  if (['trip', 'map', 'list'].includes(hashView) && hashView !== 'list') {
+    switchView(hashView);
   }
 });
 
@@ -587,6 +797,36 @@ function switchView(view) {
   document.querySelectorAll('.view-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.view === view);
   });
+
+  const tripContainer = document.getElementById('tripContainer');
+  const statsBar = document.querySelector('.stats-bar');
+
+  if (view === 'trip') {
+    // Trip view lives within the app container (not a fullscreen overlay)
+    const appContainer = document.getElementById('appContainer');
+    const mapContainer = document.getElementById('mapContainer');
+    const mapInlineContainer = document.getElementById('mapInlineContainer');
+    const placesList = document.getElementById('placesList');
+    const emptyState = document.getElementById('emptyState');
+    const categorySection = document.getElementById('categorySection');
+    const vibeSection = document.getElementById('vibeSection');
+
+    if (appContainer) appContainer.style.display = 'block';
+    if (mapContainer) mapContainer.classList.remove('active');
+    if (mapInlineContainer) mapInlineContainer.style.display = 'none';
+    if (placesList) placesList.style.display = 'none';
+    if (emptyState) emptyState.style.display = 'none';
+    if (categorySection) categorySection.style.display = 'none';
+    if (vibeSection) vibeSection.style.display = 'none';
+    if (statsBar) statsBar.style.display = 'none';
+    if (tripContainer) tripContainer.style.display = 'block';
+    renderItinerary();
+    return;
+  }
+
+  // Leaving trip view
+  if (tripContainer) tripContainer.style.display = 'none';
+  if (statsBar) statsBar.style.display = 'flex';
   
   const isMobile = window.innerWidth <= 768;
   
@@ -1230,6 +1470,7 @@ function renderPlaces() {
   container.innerHTML = filtered.map((place, index) => {
     const category = UBUD_DATA.categories.find(c => c.id === place.category);
     const isFav = favorites.includes(place.id);
+    const inTrip = isInItinerary(place.id);
     const catStyle = getCategoryStyle(place.category);
     
     return `
@@ -1261,6 +1502,9 @@ function renderPlaces() {
         
         <div class="card-actions">
           ${getCardMapsLink(place)}
+          <button class="trip-btn ${inTrip ? 'active' : ''}" onclick="event.stopPropagation(); toggleItinerary(${place.id})" aria-label="${inTrip ? 'Remove from trip' : 'Add to trip'}">
+            ${inTrip ? '✓ In trip' : '+ Trip'}
+          </button>
           <button class="details-btn" onclick="event.stopPropagation(); openPlaceModal(${place.id})">
             Details →
           </button>
@@ -1403,7 +1647,10 @@ function openPlaceModal(placeId) {
       <div id="similarPlacesContent" class="similar-places-grid"></div>
     </div>
     
-    <div class="modal-section" style="margin-top: 24px; display: flex; gap: 12px;">
+    <div class="modal-section" style="margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap;">
+      <button onclick="toggleItinerary(${place.id}); openPlaceModal(${place.id})" class="trip-btn ${isInItinerary(place.id) ? 'active' : ''}" style="flex: 1;">
+        ${isInItinerary(place.id) ? '✓ In trip' : '+ Add to trip'}
+      </button>
       <button onclick="sharePlace(${place.id})" class="details-btn" style="flex: 1;">
         📤 Share
       </button>
