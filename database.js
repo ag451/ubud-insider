@@ -168,16 +168,16 @@ function initSQLite() {
             last_generated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (place_id) REFERENCES places(id) ON DELETE CASCADE
           );
-          
-          -- Migration: Add price_level column if not exists
-          ALTER TABLE places ADD COLUMN price_level INTEGER;
         `, (err) => {
           if (err) reject(err);
           else {
-            console.log('✅ SQLite tables ready');
-            
-            // SQLite doesn't support IF NOT EXISTS on ADD COLUMN, so ignore error
-            resolve(db);
+            // Migration for legacy databases created before price_level existed.
+            // SQLite has no "ADD COLUMN IF NOT EXISTS", so run it separately and
+            // ignore the "duplicate column name" error on fresh/already-migrated DBs.
+            db.run('ALTER TABLE places ADD COLUMN price_level INTEGER', () => {
+              console.log('✅ SQLite tables ready');
+              resolve(db);
+            });
           }
         });
       }
