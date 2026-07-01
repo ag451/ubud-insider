@@ -1969,6 +1969,59 @@ body {
     flex-shrink: 0;
 }
 
+/* Drag handle + drag states */
+.trip-drag-handle {
+    flex-shrink: 0;
+    cursor: grab;
+    touch-action: none;
+    color: var(--text-muted);
+    font-size: 1.25rem;
+    line-height: 1;
+    padding: 4px 4px;
+    border-radius: var(--radius-sm);
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.trip-drag-handle:hover {
+    color: var(--ink);
+    background: var(--chip-bg);
+}
+
+.trip-drag-handle:active {
+    cursor: grabbing;
+}
+
+.trip-item-ghost {
+    opacity: 0.4;
+}
+
+.trip-item-chosen {
+    box-shadow: 6px 6px 0 var(--ink);
+}
+
+.trip-item-drag {
+    opacity: 0.95;
+}
+
+/* Empty day becomes a dashed drop zone */
+.trip-day-items:empty {
+    min-height: 48px;
+    border: 2px dashed var(--dashed-border);
+    border-radius: var(--radius-md);
+}
+
+.trip-day-items:empty::before {
+    content: 'Drop places here';
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 44px;
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+    font-weight: 700;
+}
+
 .trip-item-body {
     flex: 1;
     min-width: 0;

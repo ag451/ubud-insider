@@ -186,10 +186,11 @@ function renderItinerary() {
       : `${total} place${total !== 1 ? 's' : ''} across ${dayCount} day${dayCount !== 1 ? 's' : ''}`;
   }
 
-  daysContainer.innerHTML = itinerary.days.map((day, di) => {
-    const itemsHtml = day.items.length === 0
-      ? `<p class="trip-day-empty">No places yet.</p>`
-      : day.items.map((item, idx) => renderTripItem(day, di, idx)).join('');
+  // Tear down any previous drag instances before replacing the DOM
+  destroyTripSortables();
+
+  daysContainer.innerHTML = itinerary.days.map((day) => {
+    const itemsHtml = day.items.map((item, idx) => renderTripItem(day, idx)).join('');
     return `
       <section class="trip-day">
         <div class="trip-day-header">
@@ -199,31 +200,26 @@ function renderItinerary() {
             <button class="trip-mini-btn" onclick="deleteDay('${day.id}')" aria-label="Delete day" title="Delete day">🗑</button>
           </div>
         </div>
-        <div class="trip-day-items">${itemsHtml}</div>
+        <div class="trip-day-items" data-day-id="${day.id}">${itemsHtml}</div>
       </section>
     `;
   }).join('');
 
   if (tripEmpty) tripEmpty.style.display = total === 0 ? 'block' : 'none';
+
+  initTripSortables();
 }
 
-function renderTripItem(day, di, idx) {
+function renderTripItem(day, idx) {
   const item = day.items[idx];
   const place = UBUD_DATA.places.find(p => p.id === item.placeId);
   if (!place) return '';
   const category = UBUD_DATA.categories.find(c => c.id === place.category);
   const catStyle = getCategoryStyle(place.category);
 
-  const isFirstOverall = di === 0 && idx === 0;
-  const lastDi = itinerary.days.length - 1;
-  const isLastOverall = di === lastDi && idx === itinerary.days[di].items.length - 1;
-
   return `
-    <article class="trip-item ${catStyle.shadow}">
-      <div class="trip-item-reorder">
-        <button class="trip-mini-btn" onclick="moveItem('${day.id}', ${idx}, -1)" ${isFirstOverall ? 'disabled' : ''} aria-label="Move up">▲</button>
-        <button class="trip-mini-btn" onclick="moveItem('${day.id}', ${idx}, 1)" ${isLastOverall ? 'disabled' : ''} aria-label="Move down">▼</button>
-      </div>
+    <article class="trip-item ${catStyle.shadow}" data-place-id="${place.id}">
+      <span class="trip-drag-handle" aria-label="Drag to reorder" title="Drag to reorder">⠿</span>
       <div class="trip-item-body" onclick="openPlaceModal(${place.id})">
         <span class="category-tag ${catStyle.pill}">${category?.icon || ''} ${category?.name || place.category}</span>
         <h4 class="trip-item-name">${escapeHtml(place.name)}</h4>
@@ -232,6 +228,50 @@ function renderTripItem(day, di, idx) {
       <button class="trip-remove-btn" onclick="removeFromItinerary(${place.id}); renderItinerary(); if (currentView === 'list') renderPlaces();" aria-label="Remove from trip" title="Remove from trip">✕</button>
     </article>
   `;
+}
+
+// ===== Drag-and-drop reordering (SortableJS) =====
+let tripSortables = [];
+
+function destroyTripSortables() {
+  tripSortables.forEach(s => { try { s.destroy(); } catch (e) { /* noop */ } });
+  tripSortables = [];
+}
+
+function initTripSortables() {
+  if (typeof Sortable === 'undefined') return; // library unavailable; items just aren't draggable
+  document.querySelectorAll('#tripDays .trip-day-items').forEach((el) => {
+    tripSortables.push(new Sortable(el, {
+      group: 'trip',
+      handle: '.trip-drag-handle',
+      animation: 150,
+      ghostClass: 'trip-item-ghost',
+      chosenClass: 'trip-item-chosen',
+      dragClass: 'trip-item-drag',
+      fallbackOnBody: true,
+      onEnd: rebuildItineraryFromTripDom
+    }));
+  });
+}
+
+// Rebuild the itinerary data model from the current DOM order after a drag.
+function rebuildItineraryFromTripDom() {
+  const idToItem = {};
+  itinerary.days.forEach(d => d.items.forEach(it => { idToItem[it.placeId] = it; }));
+  const byId = {};
+  itinerary.days.forEach(d => { byId[d.id] = d; });
+
+  document.querySelectorAll('#tripDays .trip-day-items').forEach((el) => {
+    const day = byId[el.getAttribute('data-day-id')];
+    if (!day) return;
+    const ids = Array.from(el.querySelectorAll('.trip-item[data-place-id]'))
+      .map(x => parseInt(x.getAttribute('data-place-id')));
+    day.items = ids.map(pid => idToItem[pid] || { placeId: pid, note: '', time: '' });
+  });
+
+  saveItinerary();
+  // Re-render deferred so SortableJS finishes its own DOM work first
+  setTimeout(() => { if (currentView === 'trip') renderItinerary(); }, 0);
 }
 
 // Load places from database
